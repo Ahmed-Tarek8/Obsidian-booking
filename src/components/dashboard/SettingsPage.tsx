@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { PremiumButton } from "./PremiumButton";
 import { SectionPanel } from "./SectionPanel";
 import { cn } from "@/lib/utils";
+import { useBookingStore } from "@/lib/store";
 import {
   Settings,
   Calendar,
@@ -42,6 +43,31 @@ const settingTabs: { id: TabId; label: string; icon: typeof Settings }[] = [
   { id: "notifications", label: "Notifications", icon: Bell },
   { id: "branding", label: "Branding", icon: Palette },
   { id: "security", label: "Security", icon: Shield },
+];
+
+// ── Time options ─────────────────────────────────────────────────────────
+const timeOptions = [
+  "8:00 AM", "8:30 AM", "9:00 AM", "9:30 AM",
+  "10:00 AM", "10:30 AM", "11:00 AM", "11:30 AM",
+  "12:00 PM", "12:30 PM", "1:00 PM", "1:30 PM",
+  "2:00 PM", "2:30 PM", "3:00 PM", "3:30 PM",
+  "4:00 PM", "4:30 PM", "5:00 PM", "5:30 PM",
+  "6:00 PM", "6:30 PM", "7:00 PM", "7:30 PM", "8:00 PM",
+];
+
+const slotDurationOptions = ["15 min", "30 min", "45 min", "60 min", "90 min", "120 min"];
+
+const noticeOptions = ["1 hour", "2 hours", "4 hours", "12 hours", "24 hours"];
+
+const advanceOptions = ["7 days", "14 days", "30 days", "60 days", "90 days"];
+
+const cancellationNoticeOptions = ["1 hour", "2 hours", "4 hours", "12 hours", "24 hours", "48 hours"];
+
+const timezoneOptions = [
+  "(GMT-08:00) Pacific Time (US & Canada)",
+  "(GMT-07:00) Mountain Time (US & Canada)",
+  "(GMT-06:00) Central Time (US & Canada)",
+  "(GMT-05:00) Eastern Time (US & Canada)",
 ];
 
 // ── Helpers ──────────────────────────────────────────────────────────────
@@ -110,22 +136,47 @@ function ProfileCard({
 
 // ── General Tab ──────────────────────────────────────────────────────────
 function GeneralTab() {
-  const [sameDay, setSameDay] = useState(true);
-  const [autoConfirm, setAutoConfirm] = useState(true);
-  const [allowCancel, setAllowCancel] = useState(true);
-  const [daysEnabled, setDaysEnabled] = useState<boolean[]>(
-    Array(7).fill(true) as boolean[]
+  const settings = useBookingStore((s) => s.settings);
+  const updateSettings = useBookingStore((s) => s.updateSettings);
+  const notifications = settings.notifications;
+
+  const activeDaysCount = settings.businessHours.filter((h) => h.active).length;
+
+  const handleFieldChange = useCallback(
+    (field: string, value: string | number) => {
+      updateSettings({ [field]: value } as any);
+    },
+    [updateSettings]
   );
 
-  const days = [
-    "Monday",
-    "Tuesday",
-    "Wednesday",
-    "Thursday",
-    "Friday",
-    "Saturday",
-    "Sunday",
-  ];
+  const handleToggleNotification = useCallback(
+    (field: "email" | "sms" | "push" | "marketing") => {
+      updateSettings({
+        notifications: { ...notifications, [field]: !notifications[field] },
+      });
+    },
+    [notifications, updateSettings]
+  );
+
+  const handleBusinessHourToggle = useCallback(
+    (index: number) => {
+      const updated = settings.businessHours.map((h, i) =>
+        i === index ? { ...h, active: !h.active } : h
+      );
+      updateSettings({ businessHours: updated });
+    },
+    [settings.businessHours, updateSettings]
+  );
+
+  const handleBusinessHourTime = useCallback(
+    (index: number, field: "start" | "end", value: string) => {
+      const updated = settings.businessHours.map((h, i) =>
+        i === index ? { ...h, [field]: value } : h
+      );
+      updateSettings({ businessHours: updated });
+    },
+    [settings.businessHours, updateSettings]
+  );
 
   return (
     <div className="space-y-6">
@@ -140,20 +191,20 @@ function GeneralTab() {
         />
         <ProfileCard
           title="Booking Rules"
-          value={6}
-          subtitle="Active rules"
+          value={activeDaysCount}
+          subtitle="Active days"
           icon={BookOpen}
         />
         <ProfileCard
           title="Notification Channels"
-          value={4}
-          subtitle="Channels connected"
+          value={Object.values(notifications).filter(Boolean).length}
+          subtitle="Channels active"
           icon={Bell}
         />
         <ProfileCard
-          title="Payment Methods"
-          value={3}
-          subtitle="Active methods"
+          title="Slot Duration"
+          value={`${settings.defaultSlotDuration} min`}
+          subtitle="Default booking"
           icon={Wallet}
         />
       </div>
@@ -170,7 +221,8 @@ function GeneralTab() {
             </label>
             <input
               type="text"
-              defaultValue="Studio A"
+              value={settings.studioName}
+              onChange={(e) => handleFieldChange("studioName", e.target.value)}
               className="premium-input w-full rounded-lg px-3 py-2 text-[13px] text-[#e0e0e0] placeholder:text-[#555] focus:outline-none"
             />
           </div>
@@ -180,7 +232,8 @@ function GeneralTab() {
             </label>
             <input
               type="email"
-              defaultValue="hello@studioa.com"
+              value={settings.email}
+              onChange={(e) => handleFieldChange("email", e.target.value)}
               className="premium-input w-full rounded-lg px-3 py-2 text-[13px] text-[#e0e0e0] placeholder:text-[#555] focus:outline-none"
             />
           </div>
@@ -190,7 +243,8 @@ function GeneralTab() {
             </label>
             <input
               type="tel"
-              defaultValue="(555) 123-4567"
+              value={settings.phone}
+              onChange={(e) => handleFieldChange("phone", e.target.value)}
               className="premium-input w-full rounded-lg px-3 py-2 text-[13px] text-[#e0e0e0] placeholder:text-[#555] focus:outline-none"
             />
           </div>
@@ -199,11 +253,14 @@ function GeneralTab() {
               Timezone
             </label>
             <div className="relative">
-              <select className="premium-input w-full rounded-lg px-3 py-2 text-[13px] text-[#e0e0e0] appearance-none bg-[#1a1a1a] cursor-pointer pr-8 focus:outline-none">
-                <option>(GMT-08:00) Pacific Time</option>
-                <option>(GMT-07:00) Mountain Time</option>
-                <option>(GMT-06:00) Central Time</option>
-                <option>(GMT-05:00) Eastern Time</option>
+              <select
+                value={settings.timezone}
+                onChange={(e) => handleFieldChange("timezone", e.target.value)}
+                className="premium-input w-full rounded-lg px-3 py-2 text-[13px] text-[#e0e0e0] appearance-none bg-[#1a1a1a] cursor-pointer pr-8 focus:outline-none"
+              >
+                {timezoneOptions.map((tz) => (
+                  <option key={tz}>{tz}</option>
+                ))}
               </select>
               <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#555] pointer-events-none" />
             </div>
@@ -214,7 +271,8 @@ function GeneralTab() {
             </label>
             <input
               type="text"
-              defaultValue="123 Creative Way, Suite 300, Los Angeles, CA 9012, USA"
+              value={settings.location}
+              onChange={(e) => handleFieldChange("location", e.target.value)}
               className="premium-input w-full rounded-lg px-3 py-2 text-[13px] text-[#e0e0e0] placeholder:text-[#555] focus:outline-none"
             />
           </div>
@@ -245,50 +303,45 @@ function GeneralTab() {
               </tr>
             </thead>
             <tbody>
-              {days.map((day, i) => (
+              {settings.businessHours.map((bh, i) => (
                 <tr
-                  key={day}
+                  key={bh.day}
                   className="border-b border-white/[0.03] last:border-0"
                 >
                   <td className="py-2.5">
                     <label className="flex items-center gap-2.5 cursor-pointer">
                       <input
                         type="checkbox"
-                        checked={daysEnabled[i]}
-                        onChange={() => {
-                          const next = [...daysEnabled];
-                          next[i] = !next[i];
-                          setDaysEnabled(next);
-                        }}
+                        checked={bh.active}
+                        onChange={() => handleBusinessHourToggle(i)}
                         className="w-3.5 h-3.5 rounded border-[#333] bg-[#1a1a1a] text-[#d4af37] focus:ring-[#d4af37]/30 focus:ring-offset-0 cursor-pointer accent-[#d4af37]"
                       />
                       <span
                         className={cn(
                           "text-[13px]",
-                          daysEnabled[i]
+                          bh.active
                             ? "text-[#e0e0e0]"
                             : "text-[#444]"
                         )}
                       >
-                        {day}
+                        {bh.day}
                       </span>
                     </label>
                   </td>
                   <td className="py-2.5">
                     <div className="relative w-[140px]">
                       <select
-                        disabled={!daysEnabled[i]}
-                        defaultValue="9:00 AM"
+                        disabled={!bh.active}
+                        value={bh.start || timeOptions[0]}
+                        onChange={(e) => handleBusinessHourTime(i, "start", e.target.value)}
                         className={cn(
                           "premium-input w-full rounded-lg px-3 py-1.5 text-[13px] appearance-none bg-[#1a1a1a] cursor-pointer pr-8 focus:outline-none",
-                          !daysEnabled[i] && "opacity-30 cursor-not-allowed"
+                          !bh.active && "opacity-30 cursor-not-allowed"
                         )}
                       >
-                        <option>8:00 AM</option>
-                        <option>8:30 AM</option>
-                        <option>9:00 AM</option>
-                        <option>9:30 AM</option>
-                        <option>10:00 AM</option>
+                        {timeOptions.map((t) => (
+                          <option key={t}>{t}</option>
+                        ))}
                       </select>
                       <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#555] pointer-events-none" />
                     </div>
@@ -296,19 +349,17 @@ function GeneralTab() {
                   <td className="py-2.5">
                     <div className="relative w-[140px]">
                       <select
-                        disabled={!daysEnabled[i]}
-                        defaultValue="6:00 PM"
+                        disabled={!bh.active}
+                        value={bh.end || timeOptions[10]}
+                        onChange={(e) => handleBusinessHourTime(i, "end", e.target.value)}
                         className={cn(
                           "premium-input w-full rounded-lg px-3 py-1.5 text-[13px] appearance-none bg-[#1a1a1a] cursor-pointer pr-8 focus:outline-none",
-                          !daysEnabled[i] && "opacity-30 cursor-not-allowed"
+                          !bh.active && "opacity-30 cursor-not-allowed"
                         )}
                       >
-                        <option>5:00 PM</option>
-                        <option>5:30 PM</option>
-                        <option>6:00 PM</option>
-                        <option>6:30 PM</option>
-                        <option>7:00 PM</option>
-                        <option>8:00 PM</option>
+                        {timeOptions.map((t) => (
+                          <option key={t}>{t}</option>
+                        ))}
                       </select>
                       <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#555] pointer-events-none" />
                     </div>
@@ -340,74 +391,54 @@ function GeneralTab() {
             </label>
             <div className="relative">
               <select
-                defaultValue="60 min"
+                value={`${settings.defaultSlotDuration} min`}
+                onChange={(e) =>
+                  updateSettings({
+                    defaultSlotDuration: parseInt(e.target.value),
+                  })
+                }
                 className="premium-input w-full rounded-lg px-3 py-2 text-[13px] text-[#e0e0e0] appearance-none bg-[#1a1a1a] cursor-pointer pr-8 focus:outline-none"
               >
-                <option>15 min</option>
-                <option>30 min</option>
-                <option>45 min</option>
-                <option>60 min</option>
-                <option>90 min</option>
-                <option>120 min</option>
+                {slotDurationOptions.map((opt) => (
+                  <option key={opt} value={opt.split(" ")[0]}>
+                    {opt}
+                  </option>
+                ))}
               </select>
               <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#555] pointer-events-none" />
             </div>
           </div>
           <div>
             <label className="block text-[10px] font-semibold text-[#555] uppercase tracking-wider mb-1.5">
-              Minimum Notice
+              Buffer Time
             </label>
             <div className="relative">
               <select
-                defaultValue="2 hours"
+                value={`${settings.bufferTime} min`}
+                onChange={(e) =>
+                  updateSettings({
+                    bufferTime: parseInt(e.target.value),
+                  })
+                }
                 className="premium-input w-full rounded-lg px-3 py-2 text-[13px] text-[#e0e0e0] appearance-none bg-[#1a1a1a] cursor-pointer pr-8 focus:outline-none"
               >
-                <option>1 hour</option>
-                <option>2 hours</option>
-                <option>4 hours</option>
-                <option>12 hours</option>
-                <option>24 hours</option>
+                {slotDurationOptions.map((opt) => (
+                  <option key={opt} value={opt.split(" ")[0]}>
+                    {opt}
+                  </option>
+                ))}
               </select>
               <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#555] pointer-events-none" />
             </div>
           </div>
           <div>
             <label className="block text-[10px] font-semibold text-[#555] uppercase tracking-wider mb-1.5">
-              Maximum Advance Booking
-            </label>
-            <div className="relative">
-              <select
-                defaultValue="30 days"
-                className="premium-input w-full rounded-lg px-3 py-2 text-[13px] text-[#e0e0e0] appearance-none bg-[#1a1a1a] cursor-pointer pr-8 focus:outline-none"
-              >
-                <option>7 days</option>
-                <option>14 days</option>
-                <option>30 days</option>
-                <option>60 days</option>
-                <option>90 days</option>
-              </select>
-              <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#555] pointer-events-none" />
-            </div>
-          </div>
-          <div className="flex items-center justify-between col-span-1">
-            <label className="text-[13px] text-[#b0b0b0]">
-              Allow Same-Day Booking
-            </label>
-            <Toggle checked={sameDay} onChange={setSameDay} />
-          </div>
-          <div className="flex items-center justify-between col-span-1">
-            <label className="text-[13px] text-[#b0b0b0]">
-              Auto-Confirm Bookings
-            </label>
-            <Toggle checked={autoConfirm} onChange={setAutoConfirm} />
-          </div>
-          <div>
-            <label className="block text-[10px] font-semibold text-[#555] uppercase tracking-wider mb-1.5">
-              Max Bookings Per Day
+              Currency
             </label>
             <input
-              type="number"
-              defaultValue={8}
+              type="text"
+              value={settings.currency}
+              onChange={(e) => handleFieldChange("currency", e.target.value)}
               className="premium-input w-full rounded-lg px-3 py-2 text-[13px] text-[#e0e0e0] placeholder:text-[#555] focus:outline-none"
             />
           </div>
@@ -420,50 +451,77 @@ function GeneralTab() {
           Cancellation Policy
         </h3>
         <div className="grid grid-cols-3 gap-x-6 gap-y-4">
-          <div className="flex items-center justify-between col-span-1">
-            <label className="text-[13px] text-[#b0b0b0]">
-              Allow Cancellations
-            </label>
-            <Toggle checked={allowCancel} onChange={setAllowCancel} />
-          </div>
           <div>
             <label className="block text-[10px] font-semibold text-[#555] uppercase tracking-wider mb-1.5">
-              Minimum Notice
+              Cancellation Notice
             </label>
             <div className="relative">
               <select
-                defaultValue="24 hours"
+                value={`${settings.cancellationPolicyHours} hours`}
+                onChange={(e) =>
+                  updateSettings({
+                    cancellationPolicyHours: parseInt(e.target.value),
+                  })
+                }
                 className="premium-input w-full rounded-lg px-3 py-2 text-[13px] text-[#e0e0e0] appearance-none bg-[#1a1a1a] cursor-pointer pr-8 focus:outline-none"
               >
-                <option>1 hour</option>
-                <option>2 hours</option>
-                <option>4 hours</option>
-                <option>12 hours</option>
-                <option>24 hours</option>
-                <option>48 hours</option>
+                {cancellationNoticeOptions.map((opt) => (
+                  <option key={opt} value={opt.split(" ")[0]}>
+                    {opt}
+                  </option>
+                ))}
               </select>
               <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#555] pointer-events-none" />
             </div>
           </div>
-          <div />
           <div>
             <label className="block text-[10px] font-semibold text-[#555] uppercase tracking-wider mb-1.5">
-              Late Cancellation Fee
+              Tax Rate
             </label>
             <input
-              type="text"
-              defaultValue="$25"
+              type="number"
+              value={settings.taxRate}
+              onChange={(e) => updateSettings({ taxRate: parseFloat(e.target.value) || 0 })}
+              step="0.01"
               className="premium-input w-full rounded-lg px-3 py-2 text-[13px] text-[#e0e0e0] placeholder:text-[#555] focus:outline-none"
             />
           </div>
-          <div>
-            <label className="block text-[10px] font-semibold text-[#555] uppercase tracking-wider mb-1.5">
-              No-Show Fee
-            </label>
-            <input
-              type="text"
-              defaultValue="$50"
-              className="premium-input w-full rounded-lg px-3 py-2 text-[13px] text-[#e0e0e0] placeholder:text-[#555] focus:outline-none"
+          <div />
+        </div>
+      </SectionPanel>
+
+      {/* ── Notification Preferences ─────────────────────────────────── */}
+      <SectionPanel>
+        <h3 className="text-sm font-semibold text-[#e0e0e0] mb-4">
+          Notification Preferences
+        </h3>
+        <div className="grid grid-cols-2 gap-x-6 gap-y-4">
+          <div className="flex items-center justify-between">
+            <label className="text-[13px] text-[#b0b0b0]">Email Notifications</label>
+            <Toggle
+              checked={notifications.email}
+              onChange={() => handleToggleNotification("email")}
+            />
+          </div>
+          <div className="flex items-center justify-between">
+            <label className="text-[13px] text-[#b0b0b0]">SMS Notifications</label>
+            <Toggle
+              checked={notifications.sms}
+              onChange={() => handleToggleNotification("sms")}
+            />
+          </div>
+          <div className="flex items-center justify-between">
+            <label className="text-[13px] text-[#b0b0b0]">Push Notifications</label>
+            <Toggle
+              checked={notifications.push}
+              onChange={() => handleToggleNotification("push")}
+            />
+          </div>
+          <div className="flex items-center justify-between">
+            <label className="text-[13px] text-[#b0b0b0]">Marketing Emails</label>
+            <Toggle
+              checked={notifications.marketing}
+              onChange={() => handleToggleNotification("marketing")}
             />
           </div>
         </div>
@@ -494,6 +552,8 @@ function PlaceholderTab({ tabId }: { tabId: TabId }) {
 
 // ── Right Column ─────────────────────────────────────────────────────────
 function RightColumn() {
+  const settings = useBookingStore((s) => s.settings);
+
   return (
     <div className="space-y-4">
       {/* ── Studio Summary Card ─────────────────────────────────────── */}
@@ -504,12 +564,12 @@ function RightColumn() {
           </div>
           <div className="min-w-0">
             <h4 className="text-sm font-semibold text-[#e0e0e0] truncate">
-              Studio A
+              {settings.studioName}
             </h4>
             <p className="text-[11px] text-[#666] truncate">
-              hello@studioa.com
+              {settings.email}
             </p>
-            <p className="text-[11px] text-[#666]">(555) 123-4567</p>
+            <p className="text-[11px] text-[#666]">{settings.phone}</p>
           </div>
         </div>
         <PremiumButton variant="secondary" size="sm" className="w-full">
@@ -590,7 +650,7 @@ export function SettingsPage() {
 
   return (
     <div className="h-full overflow-y-auto px-6 py-6 space-y-5">
-      {/* ── Header ───────────────────────────────────────────────────── */}
+      {/* ── Header ─────────────────────────────────────────────────────── */}
       <div>
         <h1 className="text-xl font-bold text-[#e0e0e0]">Studio Settings</h1>
         <p className="text-[13px] text-[#666] mt-1">

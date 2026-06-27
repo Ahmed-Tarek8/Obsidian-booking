@@ -1,10 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { StatCard } from "./StatCard";
 import { PremiumButton } from "./PremiumButton";
+import { useBookingStore } from "@/lib/store";
+import type { ReportStatus, Report } from "@/lib/types";
 
 import {
   FileText,
@@ -29,138 +31,6 @@ import {
   ArrowUpRight,
 } from "lucide-react";
 
-// ── Types ────────────────────────────────────────────────────────────────────
-
-type ReportStatus = "completed" | "scheduled" | "generating" | "failed";
-type ViewMode = "grid" | "list";
-
-interface Report {
-  id: string;
-  name: string;
-  starred: boolean;
-  category: string;
-  dateRange: string;
-  format: string;
-  owner: string;
-  lastGenerated: string;
-  schedule: string;
-  status: ReportStatus;
-}
-
-// ── Static Data ──────────────────────────────────────────────────────────────
-
-const reports: Report[] = [
-  {
-    id: "1",
-    name: "Executive Summary",
-    starred: true,
-    category: "Business",
-    dateRange: "Apr 1-30 2024",
-    format: "PDF",
-    owner: "SA",
-    lastGenerated: "May 1 2024 8:12 AM",
-    schedule: "Monthly",
-    status: "completed",
-  },
-  {
-    id: "2",
-    name: "Client Activity Report",
-    starred: false,
-    category: "Clients",
-    dateRange: "Apr 1-30 2024",
-    format: "PDF",
-    owner: "JB",
-    lastGenerated: "Apr 30 2024 10:45 AM",
-    schedule: "Weekly",
-    status: "completed",
-  },
-  {
-    id: "3",
-    name: "Booking Utilization",
-    starred: false,
-    category: "Operations",
-    dateRange: "Apr 1-30 2024",
-    format: "XLSX",
-    owner: "MG",
-    lastGenerated: "Apr 30 2024 6:15 PM",
-    schedule: "Weekly",
-    status: "completed",
-  },
-  {
-    id: "4",
-    name: "Revenue Report",
-    starred: false,
-    category: "Finance",
-    dateRange: "Mar 1-31 2024",
-    format: "PDF",
-    owner: "SA",
-    lastGenerated: "Apr 1 2024 9:22 AM",
-    schedule: "Monthly",
-    status: "completed",
-  },
-  {
-    id: "5",
-    name: "Staff Performance",
-    starred: false,
-    category: "Team",
-    dateRange: "Apr 1-30 2024",
-    format: "PDF",
-    owner: "HR",
-    lastGenerated: "Apr 30 2024 2:22 PM",
-    schedule: "Monthly",
-    status: "completed",
-  },
-  {
-    id: "6",
-    name: "No Show & Cancellations",
-    starred: false,
-    category: "Operations",
-    dateRange: "Apr 1-30 2024",
-    format: "CSV",
-    owner: "MG",
-    lastGenerated: "Apr 30 2024 1:05 PM",
-    schedule: "Weekly",
-    status: "completed",
-  },
-  {
-    id: "7",
-    name: "Service Performance",
-    starred: false,
-    category: "Analytics",
-    dateRange: "Apr 1-30 2024",
-    format: "PDF",
-    owner: "MG",
-    lastGenerated: "—",
-    schedule: "Weekly",
-    status: "scheduled",
-  },
-  {
-    id: "8",
-    name: "Client Feedback Summary",
-    starred: false,
-    category: "Clients",
-    dateRange: "Mar 1-31 2024",
-    format: "PDF",
-    owner: "JB",
-    lastGenerated: "Apr 1 2024 11:30 AM",
-    schedule: "Monthly",
-    status: "completed",
-  },
-];
-
-const reportHistory = [
-  { date: "May 1, 2024 8:12 AM", status: "Completed", format: "PDF", size: "2.4 MB" },
-  { date: "Apr 1, 2024 8:05 AM", status: "Completed", format: "PDF", size: "2.1 MB" },
-  { date: "Mar 1, 2024 8:10 AM", status: "Completed", format: "PDF", size: "1.9 MB" },
-];
-
-const keyMetrics = [
-  { label: "Total Revenue", value: "$32,450", change: "+12.5%", icon: DollarSign },
-  { label: "Total Bookings", value: "487", change: "+8.2%", icon: BarChart3 },
-  { label: "Active Clients", value: "156", change: "+5.1%", icon: Users },
-  { label: "Avg. Booking Value", value: "$66.60", change: "+4.1%", icon: TrendingUp },
-];
-
 // ── Badge Configs ────────────────────────────────────────────────────────────
 
 const categoryColors: Record<string, string> = {
@@ -170,6 +40,7 @@ const categoryColors: Record<string, string> = {
   Finance: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
   Team: "text-orange-400 bg-orange-500/10 border-orange-500/20",
   Analytics: "text-cyan-400 bg-cyan-500/10 border-cyan-500/20",
+  Custom: "text-pink-400 bg-pink-500/10 border-pink-500/20",
 };
 
 const formatColors: Record<string, string> = {
@@ -181,11 +52,11 @@ const formatColors: Record<string, string> = {
 // ── Report Status Badge ──────────────────────────────────────────────────────
 
 function ReportStatusBadge({ status }: { status: ReportStatus }) {
-  const config = {
-    completed: { label: "Completed", cls: "text-emerald-400 border-emerald-500/20 bg-emerald-500/5", dot: "bg-emerald-500" },
-    scheduled: { label: "Scheduled", cls: "text-blue-400 border-blue-500/20 bg-blue-500/5", dot: "bg-blue-500" },
-    generating: { label: "Generating", cls: "text-amber-400 border-amber-500/20 bg-amber-500/5", dot: "bg-amber-500" },
-    failed: { label: "Failed", cls: "text-red-400 border-red-500/20 bg-red-500/5", dot: "bg-red-500" },
+  const config: Record<ReportStatus, { label: string; cls: string; dot: string }> = {
+    Completed: { label: "Completed", cls: "text-emerald-400 border-emerald-500/20 bg-emerald-500/5", dot: "bg-emerald-500" },
+    Scheduled: { label: "Scheduled", cls: "text-blue-400 border-blue-500/20 bg-blue-500/5", dot: "bg-blue-500" },
+    Draft: { label: "Draft", cls: "text-amber-400 border-amber-500/20 bg-amber-500/5", dot: "bg-amber-500" },
+    Failed: { label: "Failed", cls: "text-red-400 border-red-500/20 bg-red-500/5", dot: "bg-red-500" },
   };
   const c = config[status];
   return (
@@ -196,13 +67,81 @@ function ReportStatusBadge({ status }: { status: ReportStatus }) {
   );
 }
 
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+function formatDateRange(dr: { start: string; end: string }): string {
+  const s = new Date(dr.start);
+  const e = new Date(dr.end);
+  const fmt = (d: Date) =>
+    d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  const year = s.getFullYear();
+  return `${fmt(s)}–${fmt(e)} ${year}`;
+}
+
+function formatLastGenerated(iso: string | null): string {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  return d.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
+}
+
+function resolveOwnerName(ownerId: string, staff: { id: string; name: string }[]): string {
+  const member = staff.find((s) => s.id === ownerId);
+  if (!member) return ownerId;
+  return member.name
+    .split(" ")
+    .map((w) => w[0])
+    .join("")
+    .toUpperCase();
+}
+
 // ── Component ────────────────────────────────────────────────────────────────
 
 export function ReportsPage() {
-  const [selectedReportId, setSelectedReportId] = useState<string | null>("1");
-  const [viewMode, setViewMode] = useState<ViewMode>("list");
+  const reports = useBookingStore((s) => s.reports);
+  const staff = useBookingStore((s) => s.staff);
+
+  const [selectedReportId, setSelectedReportId] = useState<string | null>(reports[0]?.id ?? null);
+  const [viewMode, setViewMode] = useState<"grid" | "list">("list");
   const [searchQuery, setSearchQuery] = useState("");
-  const [currentPage] = useState(1);
+  const [categoryFilter, setCategoryFilter] = useState("All Categories");
+  const [statusFilter, setStatusFilter] = useState("All Status");
+
+  // ── Computed stats ──────────────────────────────────────────────────────
+  const stats = useMemo(() => {
+    const total = reports.length;
+    const scheduled = reports.filter((r) => r.status === "Scheduled").length;
+    const exportsThisMonth = reports.filter((r) => {
+      if (r.status !== "Completed" || !r.lastGenerated) return false;
+      const d = new Date(r.lastGenerated);
+      return d.getMonth() === 3; // April = month index 3
+    }).length;
+    return { total, scheduled, exportsThisMonth };
+  }, [reports]);
+
+  // ── Filtered reports ────────────────────────────────────────────────────
+  const filteredReports = useMemo(() => {
+    return reports.filter((r) => {
+      if (searchQuery && !r.name.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+      if (categoryFilter !== "All Categories" && r.category !== categoryFilter) return false;
+      if (statusFilter !== "All Status" && r.status !== statusFilter) return false;
+      return true;
+    });
+  }, [reports, searchQuery, categoryFilter, statusFilter]);
+
+  // ── Unique categories for filter ────────────────────────────────────────
+  const categories = useMemo(() => {
+    const set = new Set(reports.map((r) => r.category));
+    return Array.from(set);
+  }, [reports]);
+
+  const statuses: ReportStatus[] = ["Completed", "Scheduled", "Draft", "Failed"];
 
   const selectedReport = reports.find((r) => r.id === selectedReportId) ?? reports[0];
 
@@ -218,23 +157,23 @@ export function ReportsPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           title="Total Reports"
-          value="42"
+          value={String(stats.total)}
           icon={FileText}
-          change="18 this month"
+          change={`${stats.total} total`}
           changeType="neutral"
           delay={0}
         />
         <StatCard
           title="Scheduled Reports"
-          value="12"
+          value={String(stats.scheduled)}
           icon={Clock}
-          change="2 this month"
+          change="Requires attention"
           changeType="neutral"
           delay={0.05}
         />
         <StatCard
           title="Exports This Month"
-          value="29"
+          value={String(stats.exportsThisMonth)}
           icon={Download}
           change="+55% last month"
           changeType="up"
@@ -266,28 +205,31 @@ export function ReportsPage() {
 
         {/* Dropdowns */}
         <div className="flex flex-wrap gap-2">
-          <select className="bg-[#1a1a1a] border border-[#d4af37]/10 rounded-lg px-3 py-2 text-sm text-[#999] focus:outline-none focus:border-[#d4af37]/30 appearance-none cursor-pointer min-w-[140px]">
+          <select
+            value={categoryFilter}
+            onChange={(e) => setCategoryFilter(e.target.value)}
+            className="bg-[#1a1a1a] border border-[#d4af37]/10 rounded-lg px-3 py-2 text-sm text-[#999] focus:outline-none focus:border-[#d4af37]/30 appearance-none cursor-pointer min-w-[140px]"
+          >
             <option>All Categories</option>
-            <option>Business</option>
-            <option>Clients</option>
-            <option>Operations</option>
-            <option>Finance</option>
-            <option>Team</option>
-            <option>Analytics</option>
+            {categories.map((c) => (
+              <option key={c}>{c}</option>
+            ))}
           </select>
-          <select className="bg-[#1a1a1a] border border-[#d4af37]/10 rounded-lg px-3 py-2 text-sm text-[#999] focus:outline-none focus:border-[#d4af37]/30 appearance-none cursor-pointer min-w-[120px]">
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="bg-[#1a1a1a] border border-[#d4af37]/10 rounded-lg px-3 py-2 text-sm text-[#999] focus:outline-none focus:border-[#d4af37]/30 appearance-none cursor-pointer min-w-[120px]"
+          >
             <option>All Status</option>
-            <option>Completed</option>
-            <option>Scheduled</option>
-            <option>Generating</option>
-            <option>Failed</option>
+            {statuses.map((s) => (
+              <option key={s}>{s}</option>
+            ))}
           </select>
           <select className="bg-[#1a1a1a] border border-[#d4af37]/10 rounded-lg px-3 py-2 text-sm text-[#999] focus:outline-none focus:border-[#d4af37]/30 appearance-none cursor-pointer min-w-[120px]">
             <option>All Owners</option>
-            <option>SA</option>
-            <option>JB</option>
-            <option>MG</option>
-            <option>HR</option>
+            {staff.map((s) => (
+              <option key={s.id}>{s.name}</option>
+            ))}
           </select>
 
           {/* Filters button */}
@@ -346,7 +288,7 @@ export function ReportsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {reports.map((report, i) => {
+                  {filteredReports.map((report, i) => {
                     const isSelected = selectedReportId === report.id;
                     return (
                       <motion.tr
@@ -387,7 +329,7 @@ export function ReportsPage() {
 
                         {/* Date Range */}
                         <td className="px-4 py-3">
-                          <span className="text-xs text-[#aaa] whitespace-nowrap">{report.dateRange}</span>
+                          <span className="text-xs text-[#aaa] whitespace-nowrap">{formatDateRange(report.dateRange)}</span>
                         </td>
 
                         {/* Format */}
@@ -404,12 +346,12 @@ export function ReportsPage() {
 
                         {/* Owner */}
                         <td className="px-4 py-3">
-                          <span className="text-xs text-[#ccc] font-medium">{report.owner}</span>
+                          <span className="text-xs text-[#ccc] font-medium">{resolveOwnerName(report.ownerId, staff)}</span>
                         </td>
 
                         {/* Last Generated */}
                         <td className="px-4 py-3">
-                          <span className="text-xs text-[#888] whitespace-nowrap">{report.lastGenerated}</span>
+                          <span className="text-xs text-[#888] whitespace-nowrap">{formatLastGenerated(report.lastGenerated)}</span>
                         </td>
 
                         {/* Schedule */}
@@ -436,13 +378,13 @@ export function ReportsPage() {
             {/* Pagination */}
             <div className="flex items-center justify-between px-4 py-3 border-t border-[#d4af37]/8">
               <span className="text-xs text-[#666]">
-                Showing 1 to 8 of 42 reports
+                Showing {filteredReports.length} of {reports.length} reports
               </span>
               <div className="flex items-center gap-1">
                 <PremiumButton
                   variant="ghost"
                   size="sm"
-                  disabled={currentPage <= 1}
+                  disabled={true}
                 >
                   <ChevronLeft className="w-3.5 h-3.5" />
                   Previous
@@ -450,52 +392,16 @@ export function ReportsPage() {
 
                 <div className="flex items-center gap-0.5 mx-1">
                   <button
-                    className={cn(
-                      "w-7 h-7 rounded-md text-xs font-medium transition-all duration-200",
-                      currentPage === 1
-                        ? "bg-[#d4af37] text-[#0a0a0a]"
-                        : "text-[#888] hover:text-white hover:bg-[#1a1a1a]"
-                    )}
+                    className="w-7 h-7 rounded-md text-xs font-medium transition-all duration-200 bg-[#d4af37] text-[#0a0a0a]"
                   >
                     1
-                  </button>
-                  <button
-                    className={cn(
-                      "w-7 h-7 rounded-md text-xs font-medium transition-all duration-200",
-                      currentPage === 2
-                        ? "bg-[#d4af37] text-[#0a0a0a]"
-                        : "text-[#888] hover:text-white hover:bg-[#1a1a1a]"
-                    )}
-                  >
-                    2
-                  </button>
-                  <button
-                    className={cn(
-                      "w-7 h-7 rounded-md text-xs font-medium transition-all duration-200",
-                      currentPage === 3
-                        ? "bg-[#d4af37] text-[#0a0a0a]"
-                        : "text-[#888] hover:text-white hover:bg-[#1a1a1a]"
-                    )}
-                  >
-                    3
-                  </button>
-                  <span className="text-[#555] text-xs px-1">...</span>
-                  <button
-                    className={cn(
-                      "w-7 h-7 rounded-md text-xs font-medium transition-all duration-200",
-                      currentPage === 6
-                        ? "bg-[#d4af37] text-[#0a0a0a]"
-                        : "text-[#888] hover:text-white hover:bg-[#1a1a1a]"
-                    )}
-                  >
-                    6
                   </button>
                 </div>
 
                 <PremiumButton
                   variant="ghost"
                   size="sm"
-                  disabled={currentPage >= 6}
+                  disabled={true}
                 >
                   Next
                   <ChevronRight className="w-3.5 h-3.5" />
@@ -559,11 +465,17 @@ export function ReportsPage() {
                       >
                         {selectedReport.format}
                       </span>
+                      <ReportStatusBadge status={selectedReport.status} />
                     </div>
 
                     <div className="mt-2.5 flex items-center gap-2">
                       <span className="text-xs text-[#777]">Date Range:</span>
-                      <span className="text-xs text-[#ccc]">{selectedReport.dateRange}</span>
+                      <span className="text-xs text-[#ccc]">{formatDateRange(selectedReport.dateRange)}</span>
+                    </div>
+
+                    <div className="mt-1.5 flex items-center gap-2">
+                      <span className="text-xs text-[#777]">Owner:</span>
+                      <span className="text-xs text-[#ccc]">{staff.find((s) => s.id === selectedReport.ownerId)?.name ?? selectedReport.ownerId}</span>
                     </div>
                   </div>
 
@@ -587,32 +499,67 @@ export function ReportsPage() {
                     </div>
                   </div>
 
-                  {/* Report Summary / Key Metrics */}
+                  {/* Report Info Grid */}
                   <div className="p-5 border-b border-[#d4af37]/8">
                     <h3 className="text-[10px] font-semibold text-[#666] uppercase tracking-wider mb-3">
-                      Report Summary
+                      Report Info
                     </h3>
                     <div className="grid grid-cols-2 gap-3">
-                      {keyMetrics.map((metric) => (
-                        <div
-                          key={metric.label}
-                          className="bg-[#141414] rounded-lg p-3 border border-[#d4af37]/5"
-                        >
-                          <div className="flex items-center gap-1.5 mb-1.5">
-                            <metric.icon className="w-3 h-3 text-[#555]" />
-                            <span className="text-[10px] text-[#666] uppercase tracking-wide">
-                              {metric.label}
-                            </span>
-                          </div>
-                          <div className="text-lg font-bold text-[#e0e0e0]">{metric.value}</div>
-                          <div className="flex items-center gap-1 mt-0.5">
-                            <ArrowUpRight className="w-3 h-3 text-emerald-400" />
-                            <span className="text-[10px] text-emerald-400 font-medium">{metric.change}</span>
-                          </div>
-                        </div>
-                      ))}
+                      <div className="bg-[#141414] rounded-lg p-3 border border-[#d4af37]/5">
+                        <div className="text-[10px] text-[#666] uppercase tracking-wide mb-1">Size</div>
+                        <div className="text-sm font-bold text-[#e0e0e0]">{selectedReport.size}</div>
+                      </div>
+                      <div className="bg-[#141414] rounded-lg p-3 border border-[#d4af37]/5">
+                        <div className="text-[10px] text-[#666] uppercase tracking-wide mb-1">Schedule</div>
+                        <div className="text-sm font-bold text-[#e0e0e0]">{selectedReport.schedule}</div>
+                      </div>
+                      <div className="bg-[#141414] rounded-lg p-3 border border-[#d4af37]/5">
+                        <div className="text-[10px] text-[#666] uppercase tracking-wide mb-1">Last Generated</div>
+                        <div className="text-sm font-bold text-[#e0e0e0]">{formatLastGenerated(selectedReport.lastGenerated)}</div>
+                      </div>
+                      <div className="bg-[#141414] rounded-lg p-3 border border-[#d4af37]/5">
+                        <div className="text-[10px] text-[#666] uppercase tracking-wide mb-1">Recipients</div>
+                        <div className="text-sm font-bold text-[#e0e0e0]">{selectedReport.recipients.length}</div>
+                      </div>
                     </div>
                   </div>
+
+                  {/* Sections */}
+                  {selectedReport.sections.length > 0 && (
+                    <div className="p-5 border-b border-[#d4af37]/8">
+                      <h3 className="text-[10px] font-semibold text-[#666] uppercase tracking-wider mb-3">
+                        Sections
+                      </h3>
+                      <div className="space-y-1.5">
+                        {selectedReport.sections.map((section) => (
+                          <div key={section} className="flex items-center gap-2 bg-[#141414] rounded-lg px-3 py-2 border border-[#d4af37]/5">
+                            <BarChart3 className="w-3 h-3 text-[#555] shrink-0" />
+                            <span className="text-xs text-[#ccc]">{section}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Recipients */}
+                  {selectedReport.recipients.length > 0 && (
+                    <div className="p-5 border-b border-[#d4af37]/8">
+                      <h3 className="text-[10px] font-semibold text-[#666] uppercase tracking-wider mb-3">
+                        Recipients
+                      </h3>
+                      <div className="space-y-1.5">
+                        {selectedReport.recipients.map((rid) => {
+                          const member = staff.find((s) => s.id === rid);
+                          return (
+                            <div key={rid} className="flex items-center gap-2 bg-[#141414] rounded-lg px-3 py-2 border border-[#d4af37]/5">
+                              <Users className="w-3 h-3 text-[#555] shrink-0" />
+                              <span className="text-xs text-[#ccc]">{member?.name ?? rid}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Schedule Section */}
                   <div className="p-5 border-b border-[#d4af37]/8">
@@ -627,30 +574,27 @@ export function ReportsPage() {
                     </div>
                   </div>
 
-                  {/* History */}
-                  <div className="p-5">
-                    <h3 className="text-[10px] font-semibold text-[#666] uppercase tracking-wider mb-3">
-                      Generation History
-                    </h3>
-                    <div className="space-y-3">
-                      {reportHistory.map((entry, idx) => (
-                        <div
-                          key={idx}
-                          className="flex items-center justify-between gap-3"
-                        >
+                  {/* Generation History (single entry for this report) */}
+                  {selectedReport.lastGenerated && (
+                    <div className="p-5">
+                      <h3 className="text-[10px] font-semibold text-[#666] uppercase tracking-wider mb-3">
+                        Generation History
+                      </h3>
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between gap-3">
                           <div className="space-y-0.5 min-w-0">
                             <div className="text-xs text-[#ccc] font-medium whitespace-nowrap">
-                              {entry.date}
+                              {formatLastGenerated(selectedReport.lastGenerated)}
                             </div>
                             <div className="text-[10px] text-[#666]">
-                              {entry.format} · {entry.size}
+                              {selectedReport.format} · {selectedReport.size}
                             </div>
                           </div>
-                          <ReportStatusBadge status="completed" />
+                          <ReportStatusBadge status="Completed" />
                         </div>
-                      ))}
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
               </motion.div>
             )}

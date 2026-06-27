@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useState, useMemo, useCallback } from "react";
+import { motion } from "framer-motion";
 import {
   ChevronLeft,
   ChevronRight,
@@ -13,6 +13,7 @@ import {
 import { cn } from "@/lib/utils";
 import { PremiumButton } from "./PremiumButton";
 import { AppointmentDetailsPanel } from "./AppointmentDetailsPanel";
+import { useBookingStore, formatTime12 } from "@/lib/store";
 
 type ViewMode = "DAY" | "WEEK" | "MONTH";
 
@@ -40,64 +41,42 @@ const PAL = {
   blue:   { gradient: "linear-gradient(180deg, #122550 0%, #1a3870 40%, #254a90 100%)", border: "rgba(96,165,250,0.40)", accent: "#93c5fd" },
 };
 
-function bk(id: string, s: string, e: string, ci: string, cl: string, svc: string, staff: string, vip: boolean, pal: keyof typeof PAL): CalBlock {
-  return {
-    id, startTime: parseTime(s), endTime: parseTime(e),
-    clientInitials: ci, clientLabel: cl, service: svc, staffLabel: staff, isVip: vip,
-    gradient: PAL[pal].gradient, borderColor: PAL[pal].border, accentColor: PAL[pal].accent,
-  };
+const PALETTE_KEYS = Object.keys(PAL) as (keyof typeof PAL)[];
+
+/* ── Helpers ───────────────────────────────────────── */
+
+/** Parse "HH:mm" (24h) → decimal hours, e.g. "09:30" → 9.5 */
+function parseTime24(t: string): number {
+  const [h, m] = t.split(":").map(Number);
+  return h + (m || 0) / 60;
 }
 
-function parseTime(t: string): number {
-  const [h, m] = t.replace(/\s*(AM|PM)/i, "").split(":").map(Number);
-  const pm = /PM/i.test(t) && h !== 12;
-  const am = /AM/i.test(t) && h === 12;
-  return (pm ? h + 12 : am ? 0 : h) + (m || 0) / 60;
+/** Format decimal hours → "h:mm AM/PM", e.g. 9.5 → "9:30 AM" */
+function formatTime(h: number): string {
+  const hr = Math.floor(h);
+  const min = Math.round((h - hr) * 60);
+  const ampm = hr >= 12 ? "PM" : "AM";
+  const display = hr > 12 ? hr - 12 : hr === 0 ? 12 : hr;
+  return `${display}:${String(min).padStart(2, "0")} ${ampm}`;
 }
 
-/* ── Data ───────────────────────────────────────────── */
-const ALL_BOOKINGS: CalBlock[][] = [
-  // Monday
-  [bk("cb1","9:00 AM","10:00 AM","IA","Investor A","Strategy Session","Staff A",true,"gold"),
-   bk("cb2","11:00 AM","11:45 AM","C7","Client 07","Team Workshop","Staff C",true,"teal"),
-   bk("cb3","1:00 PM","2:00 PM","C3","Client 03","Full Consultation","Staff B",false,"purple"),
-   bk("cb4","2:00 PM","3:00 PM","IA","Investor A","Deep Dive","Staff A",true,"gold"),
-   bk("cb5","4:00 PM","5:00 PM","C1","Client 01","Onboarding Call","Staff C",false,"blue")],
-  // Tuesday
-  [bk("cb6","8:00 AM","9:00 AM","C5","Client 05","Portfolio Review","Staff B",false,"gold"),
-   bk("cb7","10:00 AM","11:00 AM","C4","Client 04","Strategy Session","Staff A",true,"gold"),
-   bk("cb8","12:00 PM","12:45 PM","B2","Client B","Quick Sync","Staff A",false,"green"),
-   bk("cb9","3:00 PM","4:30 PM","C9","Client 09","Extended Session","Staff C",false,"purple"),
-   bk("cb10","3:00 PM","3:45 PM","C2","Client 02","Follow-up Call","Staff B",false,"blue"),
-   bk("cb11","6:00 PM","7:00 PM","C8","Client 08","Team Workshop","Staff C",false,"teal")],
-  // Wednesday
-  [bk("cb12","9:00 AM","10:00 AM","IA","Investor A","Strategy Session","Staff B",true,"gold"),
-   bk("cb13","11:00 AM","12:00 PM","C3","Client 03","Full Consultation","Staff A",false,"purple"),
-   bk("cb14","2:00 PM","3:00 PM","C5","Client 05","Portfolio Review","Staff B",false,"gold"),
-   bk("cb15","4:00 PM","5:00 PM","B2","Client B","Quick Sync","Staff A",false,"green")],
-  // Thursday
-  [bk("cb16","9:00 AM","10:30 AM","IA","Investor A","Deep Dive","Staff A",true,"gold"),
-   bk("cb17","11:00 AM","11:45 AM","C7","Client 07","Team Workshop","Staff C",true,"teal"),
-   bk("cb18","1:00 PM","2:00 PM","C3","Client 03","Onboarding Call","Staff B",false,"blue"),
-   bk("cb19","3:00 PM","4:00 PM","C1","Client 01","Strategy Session","Staff A",false,"gold"),
-   bk("cb20","3:00 PM","3:45 PM","C6","Client 06","Follow-up Call","Staff C",false,"blue"),
-   bk("cb21","5:00 PM","6:00 PM","C4","Client 04","Extended Session","Staff B",true,"purple")],
-  // Friday
-  [bk("cb22","9:00 AM","10:00 AM","C5","Client 05","Portfolio Review","Staff B",false,"gold"),
-   bk("cb23","10:00 AM","11:00 AM","C9","Client 09","Full Consultation","Staff A",false,"purple"),
-   bk("cb24","1:00 PM","2:00 PM","IA","Investor A","Strategy Session","Staff A",true,"gold"),
-   bk("cb25","3:00 PM","4:00 PM","B2","Client B","Quick Sync","Staff C",false,"green"),
-   bk("cb26","5:00 PM","6:30 PM","C2","Client 02","Team Workshop","Staff A",false,"teal")],
-  // Saturday
-  [bk("cb27","10:00 AM","11:00 AM","C6","Client 06","Onboarding Call","Staff B",false,"blue"),
-   bk("cb28","12:00 PM","1:00 PM","C8","Client 08","Full Consultation","Staff C",false,"purple"),
-   bk("cb29","2:00 PM","3:00 PM","C1","Client 01","Portfolio Review","Staff A",false,"gold"),
-   bk("cb30","4:00 PM","5:00 PM","C7","Client 07","Team Workshop","Staff C",true,"teal")],
-  // Sunday
-  [bk("cb31","11:00 AM","12:00 PM","C4","Client 04","Strategy Session","Staff B",true,"gold"),
-   bk("cb32","2:00 PM","3:00 PM","C9","Client 09","Follow-up Call","Staff A",false,"blue"),
-   bk("cb33","4:00 PM","5:00 PM","C3","Client 03","Quick Sync","Staff C",false,"green")],
-];
+/** Get Monday of the week containing `date` */
+function getMonday(d: Date): Date {
+  const result = new Date(d);
+  const day = result.getDay(); // 0=Sun, 1=Mon ...
+  const diff = day === 0 ? -6 : 1 - day;
+  result.setDate(result.getDate() + diff);
+  result.setHours(0, 0, 0, 0);
+  return result;
+}
+
+/** Format Date → "YYYY-MM-DD" */
+function toDateString(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
 
 /* ── Collision / Layout Algorithm ───────────────────── */
 interface LayoutBlock extends CalBlock {
@@ -134,11 +113,9 @@ function layoutDay(blocks: CalBlock[]): LayoutBlock[] {
   const result: LayoutBlock[] = sorted.map((b) => ({ ...b, col: (b as LayoutBlock).col, totalCols: 1 }));
 
   for (const b of result) {
-    // Find all blocks that overlap with b
     const overlapping = result.filter(o =>
       o.startTime < b.endTime && o.endTime > b.startTime
     );
-    // Max column index among overlapping + 1 = total columns
     b.totalCols = Math.max(...overlapping.map(o => o.col)) + 1;
   }
 
@@ -151,18 +128,7 @@ const END_HOUR = 19;  // 7 PM — last visible hour
 const ROW_H = 52;     // px per hour
 const TOTAL_H = (END_HOUR - START_HOUR) * ROW_H;
 
-const dayMeta = [
-  { short: "MON", date: "12" },
-  { short: "TUE", date: "13" },
-  { short: "WED", date: "14" },
-  { short: "THU", date: "15", isToday: true },
-  { short: "FRI", date: "16" },
-  { short: "SAT", date: "17" },
-  { short: "SUN", date: "18" },
-];
-
-const nowHour = 13.75; // 1:45 PM
-const nowSlotY = (nowHour - START_HOUR) * ROW_H;
+const DAY_SHORTS = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"] as const;
 
 /* ── Component ──────────────────────────────────────── */
 interface CalendarPageProps {
@@ -173,11 +139,96 @@ interface CalendarPageProps {
 export function CalendarPage({ onSelectBooking, selectedBookingId }: CalendarPageProps) {
   const [viewMode, setViewMode] = useState<ViewMode>("WEEK");
 
-  const dayLayouts = useMemo(
-    () => ALL_BOOKINGS.map(dayBlocks => layoutDay(dayBlocks)),
-    []
-  );
+  /* ── Store subscriptions ─────────────────────────── */
+  const appointments = useBookingStore((s) => s.appointments);
+  const getClient = useBookingStore((s) => s.getClient);
+  const getService = useBookingStore((s) => s.getService);
+  const getStaff = useBookingStore((s) => s.getStaff);
+  const getResource = useBookingStore((s) => s.getResource);
 
+  /* ── Week navigation ─────────────────────────────── */
+  const [weekStart, setWeekStart] = useState<Date>(() => {
+    const { appointments: appts } = useBookingStore.getState();
+    if (appts.length) {
+      const dates = appts.map((a) => a.date).sort();
+      return getMonday(new Date(dates[0] + "T00:00:00"));
+    }
+    return getMonday(new Date());
+  });
+
+  const goToPrevWeek = useCallback(() => {
+    setWeekStart((prev) => {
+      const d = new Date(prev);
+      d.setDate(d.getDate() - 7);
+      return d;
+    });
+  }, []);
+
+  const goToNextWeek = useCallback(() => {
+    setWeekStart((prev) => {
+      const d = new Date(prev);
+      d.setDate(d.getDate() + 7);
+      return d;
+    });
+  }, []);
+
+  /* ── Derived: day metadata (Mon–Sun of current week) */
+  const dayMeta = useMemo(() => {
+    const todayStr = toDateString(new Date());
+    return DAY_SHORTS.map((short, i) => {
+      const d = new Date(weekStart);
+      d.setDate(d.getDate() + i);
+      return {
+        short,
+        date: d.getDate().toString(),
+        dateStr: toDateString(d),
+        isToday: toDateString(d) === todayStr,
+      };
+    });
+  }, [weekStart]);
+
+  /* ── Derived: header date range label ────────────── */
+  const headerDateRange = useMemo(() => {
+    const start = new Date(weekStart);
+    const end = new Date(weekStart);
+    end.setDate(end.getDate() + 6);
+    const monthName = (d: Date) =>
+      d.toLocaleDateString("en-US", { month: "long" }).toUpperCase();
+    return `${monthName(start)} ${start.getDate()} — ${monthName(end)} ${end.getDate()}, ${start.getFullYear()}`;
+  }, [weekStart]);
+
+  /* ── Derived: CalBlocks from store appointments ──── */
+  const dayLayouts = useMemo(() => {
+    let globalIdx = 0;
+
+    return dayMeta.map((day) => {
+      const dayAppts = appointments.filter((a) => a.date === day.dateStr);
+      const blocks: CalBlock[] = dayAppts.map((appt) => {
+        const client = getClient(appt.clientId);
+        const service = getService(appt.serviceId);
+        const staff = getStaff(appt.staffId);
+        const pal = PALETTE_KEYS[globalIdx % PALETTE_KEYS.length];
+        globalIdx++;
+
+        return {
+          id: appt.id,
+          startTime: parseTime24(appt.startTime),
+          endTime: parseTime24(appt.endTime),
+          clientInitials: client?.initials ?? "??",
+          clientLabel: client?.name ?? "Unknown Client",
+          service: service?.name ?? "Unknown Service",
+          staffLabel: staff?.name ?? "Unknown Staff",
+          isVip: client?.tier === "VIP",
+          gradient: PAL[pal].gradient,
+          borderColor: PAL[pal].border,
+          accentColor: PAL[pal].accent,
+        };
+      });
+      return layoutDay(blocks);
+    });
+  }, [appointments, dayMeta, getClient, getService, getStaff]);
+
+  /* ── Derived: hour labels ────────────────────────── */
   const hourLabels = useMemo(() => {
     const labels: string[] = [];
     for (let h = START_HOUR; h < END_HOUR; h++) {
@@ -188,6 +239,65 @@ export function CalendarPage({ onSelectBooking, selectedBookingId }: CalendarPag
     return labels;
   }, []);
 
+  /* ── Derived: NOW indicator ──────────────────────── */
+  const nowIndicator = useMemo(() => {
+    const now = new Date();
+    const h = now.getHours() + now.getMinutes() / 60;
+    const y = (h - START_HOUR) * ROW_H;
+    const label = formatTime12(
+      `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`
+    );
+    return { y, label };
+  }, []);
+
+  /* ── Derived: selected appointment details for panel */
+  const selectedDetails = useMemo(() => {
+    if (!selectedBookingId) return undefined;
+    const appt = appointments.find((a) => a.id === selectedBookingId);
+    if (!appt) return undefined;
+
+    const client = getClient(appt.clientId);
+    const service = getService(appt.serviceId);
+    const staff = getStaff(appt.staffId);
+    const resource = getResource(appt.resourceId);
+    if (!client || !service || !staff) return undefined;
+
+    const dateObj = new Date(appt.date + "T00:00:00");
+    const dateStr = dateObj.toLocaleDateString("en-US", {
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+
+    const [sh, sm] = appt.startTime.split(":").map(Number);
+    const [eh, em] = appt.endTime.split(":").map(Number);
+    const durationMin = (eh * 60 + em) - (sh * 60 + sm);
+
+    return {
+      id: appt.id,
+      clientInitials: client.initials,
+      clientLabel: client.name,
+      clientType: client.tier === "VIP" ? ("VIP" as const) : undefined,
+      service: service.name,
+      staffInitials: staff.initials,
+      staffLabel: staff.name,
+      date: dateStr,
+      time: formatTime12(appt.startTime),
+      endTime: formatTime12(appt.endTime),
+      duration: `${durationMin} min`,
+      location: resource?.location ?? "",
+      status: appt.status as
+        | "confirmed"
+        | "pending"
+        | "rescheduled"
+        | "cancelled"
+        | "completed",
+      notes: appt.notes || undefined,
+      bookingId: appt.bookingId,
+    };
+  }, [selectedBookingId, appointments, getClient, getService, getStaff, getResource]);
+
   return (
     <div className="p-6 animate-fade-in-up flex gap-5 h-full">
       {/* Main calendar */}
@@ -195,14 +305,24 @@ export function CalendarPage({ onSelectBooking, selectedBookingId }: CalendarPag
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-3.5 border-b border-[#d4af37]/8 flex-shrink-0">
           <div className="flex items-center gap-3">
-            <PremiumButton variant="ghost" size="sm" className="!p-1.5 !rounded-md">
+            <PremiumButton
+              variant="ghost"
+              size="sm"
+              className="!p-1.5 !rounded-md"
+              onClick={goToPrevWeek}
+            >
               <ChevronLeft className="w-4 h-4" />
             </PremiumButton>
             <button className="flex items-center gap-2 text-sm font-semibold text-[#e0e0e0] tracking-wide cursor-pointer hover:text-[#d4af37] transition-colors">
-              MAY 12 — MAY 18, 2024
+              {headerDateRange}
               <ChevronDown className="w-3.5 h-3.5 text-[#666]" />
             </button>
-            <PremiumButton variant="ghost" size="sm" className="!p-1.5 !rounded-md">
+            <PremiumButton
+              variant="ghost"
+              size="sm"
+              className="!p-1.5 !rounded-md"
+              onClick={goToNextWeek}
+            >
               <ChevronRight className="w-4 h-4" />
             </PremiumButton>
           </div>
@@ -242,16 +362,20 @@ export function CalendarPage({ onSelectBooking, selectedBookingId }: CalendarPag
                 day.isToday && "bg-[#d4af37]/5"
               )}
             >
-              <div className={cn(
-                "text-[10px] font-semibold tracking-[0.15em]",
-                day.isToday ? "text-[#d4af37]" : "text-[#555]"
-              )}>
+              <div
+                className={cn(
+                  "text-[10px] font-semibold tracking-[0.15em]",
+                  day.isToday ? "text-[#d4af37]" : "text-[#555]"
+                )}
+              >
                 {day.short}
               </div>
-              <div className={cn(
-                "text-sm font-bold mt-0.5",
-                day.isToday ? "text-[#d4af37]" : "text-[#999]"
-              )}>
+              <div
+                className={cn(
+                  "text-sm font-bold mt-0.5",
+                  day.isToday ? "text-[#d4af37]" : "text-[#999]"
+                )}
+              >
                 {day.date}
               </div>
             </div>
@@ -263,11 +387,11 @@ export function CalendarPage({ onSelectBooking, selectedBookingId }: CalendarPag
           {/* Now indicator */}
           <div
             className="absolute left-0 right-0 z-20 pointer-events-none"
-            style={{ top: nowSlotY }}
+            style={{ top: nowIndicator.y }}
           >
             <div className="flex items-center gap-2">
               <span className="text-[9px] font-bold text-red-400 tracking-wider bg-red-500/10 px-1.5 py-0.5 rounded ml-1 whitespace-nowrap">
-                NOW 1:45 PM
+                NOW {nowIndicator.label}
               </span>
               <div className="flex-1 h-px bg-red-500/50" />
             </div>
@@ -275,20 +399,28 @@ export function CalendarPage({ onSelectBooking, selectedBookingId }: CalendarPag
 
           <div className="flex">
             {/* Time labels column */}
-            <div className="w-[72px] flex-shrink-0 relative" style={{ height: TOTAL_H }}>
+            <div
+              className="w-[72px] flex-shrink-0 relative"
+              style={{ height: TOTAL_H }}
+            >
               {hourLabels.map((label, i) => (
                 <div
                   key={label}
                   className="absolute right-3 -translate-y-1/2"
                   style={{ top: i * ROW_H }}
                 >
-                  <span className="text-[10px] text-[#555] font-medium tabular-nums">{label}</span>
+                  <span className="text-[10px] text-[#555] font-medium tabular-nums">
+                    {label}
+                  </span>
                 </div>
               ))}
             </div>
 
             {/* Day columns */}
-            <div className="flex-1 grid grid-cols-7 relative" style={{ height: TOTAL_H }}>
+            <div
+              className="flex-1 grid grid-cols-7 relative"
+              style={{ height: TOTAL_H }}
+            >
               {dayMeta.map((day, dayIdx) => (
                 <div
                   key={day.short}
@@ -309,7 +441,10 @@ export function CalendarPage({ onSelectBooking, selectedBookingId }: CalendarPag
                   {/* Booking blocks */}
                   {dayLayouts[dayIdx].map((b) => {
                     const top = (b.startTime - START_HOUR) * ROW_H;
-                    const height = Math.max((b.endTime - b.startTime) * ROW_H - 2, 36);
+                    const height = Math.max(
+                      (b.endTime - b.startTime) * ROW_H - 2,
+                      36
+                    );
                     const widthPct = 100 / b.totalCols;
                     const leftPct = b.col * widthPct;
 
@@ -323,7 +458,8 @@ export function CalendarPage({ onSelectBooking, selectedBookingId }: CalendarPag
                         className={cn(
                           "absolute rounded-md text-left cursor-pointer transition-all duration-200 group/bk",
                           "booking-block",
-                          selectedBookingId === b.id && "ring-1 ring-[#d4af37]/50",
+                          selectedBookingId === b.id &&
+                            "ring-1 ring-[#d4af37]/50",
                           "hover:brightness-125 hover:z-10"
                         )}
                         style={{
@@ -333,19 +469,27 @@ export function CalendarPage({ onSelectBooking, selectedBookingId }: CalendarPag
                           width: `calc(${widthPct}% - 4px)`,
                           background: b.gradient,
                           border: `1px solid ${b.borderColor}`,
-                          boxShadow: selectedBookingId === b.id
-                            ? "inset 0 1px 0 rgba(255,255,255,0.10), 0 2px 6px rgba(0,0,0,0.5), 0 0 12px rgba(212,175,55,0.15)"
-                            : "inset 0 1px 0 rgba(255,255,255,0.08), 0 1px 4px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.03)",
+                          boxShadow:
+                            selectedBookingId === b.id
+                              ? "inset 0 1px 0 rgba(255,255,255,0.10), 0 2px 6px rgba(0,0,0,0.5), 0 0 12px rgba(212,175,55,0.15)"
+                              : "inset 0 1px 0 rgba(255,255,255,0.08), 0 1px 4px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.03)",
                         }}
                       >
                         <div className="px-1 py-1 h-full flex flex-col justify-start overflow-hidden relative">
                           {/* Client name + VIP */}
                           <div className="flex items-center gap-1">
-                            {b.isVip && <Diamond className="w-2 h-2 flex-shrink-0" style={{ color: b.accentColor }} />}
+                            {b.isVip && (
+                              <Diamond
+                                className="w-2 h-2 flex-shrink-0"
+                                style={{ color: b.accentColor }}
+                              />
+                            )}
                             <span
                               className={cn(
                                 "font-semibold truncate leading-tight",
-                                b.totalCols > 1 ? "text-[8px]" : "text-[10px]"
+                                b.totalCols > 1
+                                  ? "text-[8px]"
+                                  : "text-[10px]"
                               )}
                               style={{ color: b.accentColor }}
                             >
@@ -354,12 +498,15 @@ export function CalendarPage({ onSelectBooking, selectedBookingId }: CalendarPag
                           </div>
                           {/* Service — hide in narrow overlapping blocks */}
                           {b.totalCols <= 1 && (
-                            <div className="text-[8px] text-[#bbb] truncate leading-tight mt-px">{b.service}</div>
+                            <div className="text-[8px] text-[#bbb] truncate leading-tight mt-px">
+                              {b.service}
+                            </div>
                           )}
                           {/* Time + Staff (only if block is tall AND wide enough) */}
                           {height > 50 && b.totalCols <= 1 && (
                             <div className="text-[7px] text-[#888] mt-px truncate leading-tight">
-                              {formatTime(b.startTime)} — {formatTime(b.endTime)} · {b.staffLabel}
+                              {formatTime(b.startTime)} — {formatTime(b.endTime)} ·{" "}
+                              {b.staffLabel}
                             </div>
                           )}
 
@@ -378,19 +525,14 @@ export function CalendarPage({ onSelectBooking, selectedBookingId }: CalendarPag
         </div>
       </div>
 
-      {/* Right detail panel */}
+      {/* Right detail panel — driven from store */}
       <div className="w-[300px] flex-shrink-0">
-        <AppointmentDetailsPanel isOpen={!!selectedBookingId} onClose={() => onSelectBooking?.(null)} />
+        <AppointmentDetailsPanel
+          details={selectedDetails}
+          isOpen={!!selectedBookingId}
+          onClose={() => onSelectBooking?.(null as unknown as string)}
+        />
       </div>
     </div>
   );
-}
-
-/* ── Helpers ────────────────────────────────────────── */
-function formatTime(h: number): string {
-  const hr = Math.floor(h);
-  const min = Math.round((h - hr) * 60);
-  const ampm = hr >= 12 ? "PM" : "AM";
-  const display = hr > 12 ? hr - 12 : hr === 0 ? 12 : hr;
-  return `${display}:${String(min).padStart(2, "0")} ${ampm}`;
 }

@@ -1,9 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { useBookingStore, formatCurrency } from "@/lib/store";
 import { PremiumButton } from "@/components/dashboard/PremiumButton";
+import { StatusChip } from "@/components/dashboard/StatusChip";
 import {
   CalendarRange,
   Layers,
@@ -20,142 +22,113 @@ import {
   Trash2,
   Crown,
   Plus,
+  Users,
 } from "lucide-react";
 
-// ── Types ────────────────────────────────────────────────────────────────
-interface Service {
-  id: string;
-  name: string;
-  category: string;
-  categoryColor: string;
-  duration: string;
-  price: string;
-  priceLabel?: string;
-  availability: "Active" | "Limited";
-  staff: string[];
-  staffCount: number;
-  bookings: number;
-  description: string;
-  featured?: boolean;
-}
-
-// ── Data ─────────────────────────────────────────────────────────────────
-const services: Service[] = [
-  {
-    id: "s1",
-    name: "Consultation",
-    category: "Consulting",
-    categoryColor: "purple",
-    duration: "60 min",
-    price: "$120",
-    availability: "Active",
-    staff: ["SA", "SB", "SC"],
-    staffCount: 2,
-    bookings: 342,
-    description:
-      "Initial consultation to understand needs and recommend tailored solutions.",
-    featured: true,
-  },
-  {
-    id: "s2",
-    name: "Strategy Session",
-    category: "Consulting",
-    categoryColor: "purple",
-    duration: "90 min",
-    price: "$250",
-    availability: "Active",
-    staff: ["SA", "SB", "SC"],
-    staffCount: 3,
-    bookings: 218,
-    description: "Deep-dive analysis and planning session.",
-    featured: true,
-  },
-  {
-    id: "s3",
-    name: "Premium Meeting Room",
-    category: "Space",
-    categoryColor: "blue",
-    duration: "60 min",
-    price: "$85/hr",
-    priceLabel: "Starting at",
-    availability: "Active",
-    staff: ["SA", "SB", "SC"],
-    staffCount: 4,
-    bookings: 156,
-    description: "Fully-equipped room with premium amenities.",
-  },
-  {
-    id: "s4",
-    name: "Virtual Session",
-    category: "Virtual",
-    categoryColor: "teal",
-    duration: "45 min",
-    price: "$100",
-    availability: "Active",
-    staff: ["SA", "SB", "SC"],
-    staffCount: 3,
-    bookings: 128,
-    description: "Online meeting via video conference.",
-  },
-  {
-    id: "s5",
-    name: "On-site Visit",
-    category: "On-site",
-    categoryColor: "orange",
-    duration: "120 min",
-    price: "$300",
-    availability: "Limited",
-    staff: ["SA", "SB", "SC"],
-    staffCount: 2,
-    bookings: 84,
-    description: "We come to your location.",
-  },
-  {
-    id: "s6",
-    name: "Workshop Slot",
-    category: "Training",
-    categoryColor: "emerald",
-    duration: "180 min",
-    price: "$400",
-    availability: "Active",
-    staff: ["SA", "SB", "SC"],
-    staffCount: 5,
-    bookings: 63,
-    description: "Group training and workshop sessions.",
-  },
-  {
-    id: "s7",
-    name: "Follow-up Call",
-    category: "Support",
-    categoryColor: "amber",
-    duration: "30 min",
-    price: "$75",
-    availability: "Active",
-    staff: ["SA", "SB", "SC"],
-    staffCount: 2,
-    bookings: 59,
-    description: "Short follow-up to review progress and next steps.",
-  },
-];
-
-// ── Helpers ──────────────────────────────────────────────────────────────
+// ── Category Color Mapping ─────────────────────────────────────────────
 const categoryBadge: Record<string, string> = {
-  purple: "bg-purple-500/15 text-purple-400 border border-purple-500/20",
+  purple:
+    "bg-purple-500/15 text-purple-400 border border-purple-500/20",
   blue: "bg-blue-500/15 text-blue-400 border border-blue-500/20",
-  teal: "bg-teal-500/15 text-teal-400 border border-teal-500/20",
-  orange: "bg-orange-500/15 text-orange-400 border border-orange-500/20",
-  emerald: "bg-emerald-500/15 text-emerald-400 border border-emerald-500/20",
-  amber: "bg-amber-500/15 text-amber-400 border border-amber-500/20",
+  green:
+    "bg-green-500/15 text-green-400 border border-green-500/20",
+  amber:
+    "bg-amber-500/15 text-amber-400 border border-amber-500/20",
+  red: "bg-red-500/15 text-red-400 border border-red-500/20",
 };
 
-// ── Component ────────────────────────────────────────────────────────────
+const availabilityDot: Record<string, string> = {
+  Active: "bg-emerald-400",
+  Limited: "bg-orange-400",
+  Inactive: "bg-red-400",
+};
+
+const availabilityText: Record<string, string> = {
+  Active: "text-emerald-400",
+  Limited: "text-orange-400",
+  Inactive: "text-red-400",
+};
+
+// ── Component ───────────────────────────────────────────────────────────
 export function ServicesPage() {
+  const services = useBookingStore((s) => s.services);
+  const staff = useBookingStore((s) => s.staff);
+  const appointments = useBookingStore((s) => s.appointments);
+
   const [selectedServiceId, setSelectedServiceId] = useState<string | null>(
     null
   );
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [viewMode, setViewMode] = useState<"grid" | "list">("list");
+  const [search, setSearch] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [availabilityFilter, setAvailabilityFilter] = useState("all");
 
-  const selectedService = services.find((s) => s.id === selectedServiceId);
+  // ── Computed: categories for filter dropdown ────────────────────────
+  const categories = useMemo(
+    () => [...new Set(services.map((s) => s.category))],
+    [services]
+  );
+
+  // ── Computed: filtered services ─────────────────────────────────────
+  const filtered = useMemo(() => {
+    let list = services;
+
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      list = list.filter((s) => s.name.toLowerCase().includes(q));
+    }
+
+    if (categoryFilter !== "all") {
+      list = list.filter((s) => s.category === categoryFilter);
+    }
+
+    if (availabilityFilter !== "all") {
+      list = list.filter((s) => s.availability === availabilityFilter);
+    }
+
+    return list;
+  }, [services, search, categoryFilter, availabilityFilter]);
+
+  // ── Computed: stat cards ────────────────────────────────────────────
+  const totalServices = services.length;
+  const activeServices = services.filter(
+    (s) => s.availability === "Active"
+  ).length;
+  const avgPrice =
+    services.length > 0
+      ? services.reduce((sum, s) => sum + s.price, 0) / services.length
+      : 0;
+  const totalBookings = services.reduce((sum, s) => sum + s.bookings, 0);
+
+  // ── Most booked service ─────────────────────────────────────────────
+  const mostBooked = useMemo(
+    () =>
+      services.reduce(
+        (best, s) => (s.bookings > (best?.bookings ?? 0) ? s : best),
+        services[0]
+      ),
+    [services]
+  );
+
+  // ── Selected service with resolved staff ────────────────────────────
+  const selectedService = useMemo(
+    () => services.find((s) => s.id === selectedServiceId),
+    [services, selectedServiceId]
+  );
+
+  const resolvedStaff = useMemo(() => {
+    if (!selectedService) return [];
+    return selectedService.staffIds
+      .map((id) => staff.find((m) => m.id === id))
+      .filter(Boolean) as (typeof staff)[number][];
+  }, [selectedService, staff]);
+
+  // ── Staff map for table ─────────────────────────────────────────────
+  const staffMap = useMemo(() => {
+    const m = new Map<string, (typeof staff)[number]>();
+    staff.forEach((s) => m.set(s.id, s));
+    return m;
+  }, [staff]);
 
   return (
     <div className="animate-fade-in-up p-6 flex gap-6">
@@ -174,81 +147,119 @@ export function ServicesPage() {
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0, ease: [0.25, 0.46, 0.45, 0.94] }}
+            transition={{
+              duration: 0.5,
+              delay: 0,
+              ease: [0.25, 0.46, 0.45, 0.94],
+            }}
             className="premium-panel rounded-xl p-4"
           >
             <div className="flex items-center justify-between mb-3">
               <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#d4af37]/15 to-[#d4af37]/5 flex items-center justify-center border border-[#d4af37]/10">
-                <CalendarRange className="w-4 h-4 text-[#d4af37]" strokeWidth={1.8} />
+                <CalendarRange
+                  className="w-4 h-4 text-[#d4af37]"
+                  strokeWidth={1.8}
+                />
               </div>
             </div>
             <div className="text-2xl font-bold text-[#e0e0e0] tracking-tight">
-              18
+              {totalServices}
             </div>
             <div className="text-xs text-[#777] font-medium uppercase tracking-wider mt-1">
               TOTAL SERVICES
             </div>
-            <div className="text-xs text-[#666] mt-2">2 vs last month</div>
+            <div className="text-xs text-[#666] mt-2">
+              Across {categories.length} categories
+            </div>
           </motion.div>
 
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.05, ease: [0.25, 0.46, 0.45, 0.94] }}
+            transition={{
+              duration: 0.5,
+              delay: 0.05,
+              ease: [0.25, 0.46, 0.45, 0.94],
+            }}
             className="premium-panel rounded-xl p-4"
           >
             <div className="flex items-center justify-between mb-3">
               <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#d4af37]/15 to-[#d4af37]/5 flex items-center justify-center border border-[#d4af37]/10">
-                <Layers className="w-4 h-4 text-[#d4af37]" strokeWidth={1.8} />
+                <Layers
+                  className="w-4 h-4 text-[#d4af37]"
+                  strokeWidth={1.8}
+                />
               </div>
             </div>
             <div className="text-2xl font-bold text-[#e0e0e0] tracking-tight">
-              15
+              {activeServices}
             </div>
             <div className="text-xs text-[#777] font-medium uppercase tracking-wider mt-1">
               ACTIVE SERVICES
             </div>
-            <div className="text-xs text-[#666] mt-2">83% of total</div>
+            <div className="text-xs text-[#666] mt-2">
+              {totalServices > 0
+                ? `${Math.round((activeServices / totalServices) * 100)}% of total`
+                : "—"}
+            </div>
           </motion.div>
 
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.1, ease: [0.25, 0.46, 0.45, 0.94] }}
+            transition={{
+              duration: 0.5,
+              delay: 0.1,
+              ease: [0.25, 0.46, 0.45, 0.94],
+            }}
             className="premium-panel rounded-xl p-4"
           >
             <div className="flex items-center justify-between mb-3">
               <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#d4af37]/15 to-[#d4af37]/5 flex items-center justify-center border border-[#d4af37]/10">
-                <FileText className="w-4 h-4 text-[#d4af37]" strokeWidth={1.8} />
+                <FileText
+                  className="w-4 h-4 text-[#d4af37]"
+                  strokeWidth={1.8}
+                />
               </div>
             </div>
             <div className="text-2xl font-bold text-[#e0e0e0] tracking-tight">
-              Consultation
+              {formatCurrency(avgPrice)}
             </div>
             <div className="text-xs text-[#777] font-medium uppercase tracking-wider mt-1">
-              MOST BOOKED
+              AVG PRICE
             </div>
-            <div className="text-xs text-[#666] mt-2">342 bookings</div>
+            <div className="text-xs text-[#666] mt-2">Per session</div>
           </motion.div>
 
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.15, ease: [0.25, 0.46, 0.45, 0.94] }}
+            transition={{
+              duration: 0.5,
+              delay: 0.15,
+              ease: [0.25, 0.46, 0.45, 0.94],
+            }}
             className="premium-panel rounded-xl p-4"
           >
             <div className="flex items-center justify-between mb-3">
               <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#d4af37]/15 to-[#d4af37]/5 flex items-center justify-center border border-[#d4af37]/10">
-                <Clock className="w-4 h-4 text-[#d4af37]" strokeWidth={1.8} />
+                <Clock
+                  className="w-4 h-4 text-[#d4af37]"
+                  strokeWidth={1.8}
+                />
               </div>
             </div>
             <div className="text-2xl font-bold text-[#e0e0e0] tracking-tight">
-              60 min
+              {totalBookings.toLocaleString()}
             </div>
             <div className="text-xs text-[#777] font-medium uppercase tracking-wider mt-1">
-              AVG DURATION
+              TOTAL BOOKINGS
             </div>
-            <div className="text-xs text-[#666] mt-2">5 min vs last month</div>
+            <div className="text-xs text-[#666] mt-2">
+              {mostBooked
+                ? `Top: ${mostBooked.name} (${mostBooked.bookings})`
+                : "—"}
+            </div>
           </motion.div>
         </div>
 
@@ -259,20 +270,34 @@ export function ServicesPage() {
             <input
               type="text"
               placeholder="Search services..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
               className="bg-[#1a1a1a] border border-[#d4af37]/10 rounded-lg pl-9 pr-3 py-2 text-sm text-white placeholder:text-[#555] w-64 outline-none focus:border-[#d4af37]/30 transition-colors"
             />
           </div>
 
-          <select className="bg-[#1a1a1a] border border-[#d4af37]/10 rounded-lg px-3 py-2 text-sm text-[#aaa] w-36 outline-none focus:border-[#d4af37]/30 appearance-none cursor-pointer transition-colors">
-            <option>All Categories</option>
+          <select
+            value={categoryFilter}
+            onChange={(e) => setCategoryFilter(e.target.value)}
+            className="bg-[#1a1a1a] border border-[#d4af37]/10 rounded-lg px-3 py-2 text-sm text-[#aaa] w-40 outline-none focus:border-[#d4af37]/30 appearance-none cursor-pointer transition-colors"
+          >
+            <option value="all">All Categories</option>
+            {categories.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
           </select>
 
-          <select className="bg-[#1a1a1a] border border-[#d4af37]/10 rounded-lg px-3 py-2 text-sm text-[#aaa] w-36 outline-none focus:border-[#d4af37]/30 appearance-none cursor-pointer transition-colors">
-            <option>All Status</option>
-          </select>
-
-          <select className="bg-[#1a1a1a] border border-[#d4af37]/10 rounded-lg px-3 py-2 text-sm text-[#aaa] w-36 outline-none focus:border-[#d4af37]/30 appearance-none cursor-pointer transition-colors">
-            <option>All Staff</option>
+          <select
+            value={availabilityFilter}
+            onChange={(e) => setAvailabilityFilter(e.target.value)}
+            className="bg-[#1a1a1a] border border-[#d4af37]/10 rounded-lg px-3 py-2 text-sm text-[#aaa] w-36 outline-none focus:border-[#d4af37]/30 appearance-none cursor-pointer transition-colors"
+          >
+            <option value="all">All Status</option>
+            <option value="Active">Active</option>
+            <option value="Limited">Limited</option>
+            <option value="Inactive">Inactive</option>
           </select>
 
           <PremiumButton variant="secondary" size="sm">
@@ -280,7 +305,7 @@ export function ServicesPage() {
             Filters
           </PremiumButton>
 
-          <div className="flex items-center border border-[#d4af37]/10 rounded-lg overflow-hidden">
+          <div className="ml-auto flex items-center border border-[#d4af37]/10 rounded-lg overflow-hidden">
             <button
               onClick={() => setViewMode("grid")}
               className={cn(
@@ -306,168 +331,267 @@ export function ServicesPage() {
           </div>
         </div>
 
-        {/* Services Table */}
-        <div className="premium-panel rounded-xl overflow-hidden mt-4">
-          <table className="w-full">
-            <thead>
-              <tr className="bg-[#161616]">
-                <th className="text-[10px] font-semibold tracking-widest text-[#666] uppercase py-3 px-4 text-left border-b border-[#d4af37]/8">
-                  Service Name
-                </th>
-                <th className="text-[10px] font-semibold tracking-widest text-[#666] uppercase py-3 px-4 text-left border-b border-[#d4af37]/8">
-                  Category
-                </th>
-                <th className="text-[10px] font-semibold tracking-widest text-[#666] uppercase py-3 px-4 text-left border-b border-[#d4af37]/8">
-                  Duration
-                </th>
-                <th className="text-[10px] font-semibold tracking-widest text-[#666] uppercase py-3 px-4 text-left border-b border-[#d4af37]/8">
-                  Price
-                </th>
-                <th className="text-[10px] font-semibold tracking-widest text-[#666] uppercase py-3 px-4 text-left border-b border-[#d4af37]/8">
-                  Availability
-                </th>
-                <th className="text-[10px] font-semibold tracking-widest text-[#666] uppercase py-3 px-4 text-left border-b border-[#d4af37]/8">
-                  Staff
-                </th>
-                <th className="text-[10px] font-semibold tracking-widest text-[#666] uppercase py-3 px-4 text-right border-b border-[#d4af37]/8">
-                  Bookings
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {services.map((service) => (
-                <tr
-                  key={service.id}
-                  onClick={() =>
-                    setSelectedServiceId(
-                      selectedServiceId === service.id ? null : service.id
-                    )
-                  }
-                  className={cn(
-                    "border-b border-[#d4af37]/5 hover:bg-[#1a1a1a] cursor-pointer transition-colors",
-                    selectedServiceId === service.id &&
-                      "bg-[#1a1a1a] border-l-2 border-l-[#d4af37]/40"
-                  )}
-                >
-                  {/* Service Name */}
-                  <td className="py-3 px-4">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-sm font-semibold text-white">
-                        {service.name}
-                      </span>
-                      {service.featured && (
-                        <Star className="w-3 h-3 text-purple-400 fill-purple-400" />
-                      )}
-                    </div>
-                    <p className="text-[11px] text-[#777] truncate max-w-[220px] mt-0.5">
-                      {service.description}
-                    </p>
-                  </td>
-
-                  {/* Category */}
-                  <td className="py-3 px-4">
-                    <span
+        {/* ── List View ───────────────────────────────────────────────── */}
+        {viewMode === "list" && (
+          <>
+            <div className="premium-panel rounded-xl overflow-hidden mt-4">
+              <table className="w-full">
+                <thead>
+                  <tr className="bg-[#161616]">
+                    <th className="text-[10px] font-semibold tracking-widest text-[#666] uppercase py-3 px-4 text-left border-b border-[#d4af37]/8">
+                      Service Name
+                    </th>
+                    <th className="text-[10px] font-semibold tracking-widest text-[#666] uppercase py-3 px-4 text-left border-b border-[#d4af37]/8">
+                      Category
+                    </th>
+                    <th className="text-[10px] font-semibold tracking-widest text-[#666] uppercase py-3 px-4 text-left border-b border-[#d4af37]/8">
+                      Duration
+                    </th>
+                    <th className="text-[10px] font-semibold tracking-widest text-[#666] uppercase py-3 px-4 text-left border-b border-[#d4af37]/8">
+                      Price
+                    </th>
+                    <th className="text-[10px] font-semibold tracking-widest text-[#666] uppercase py-3 px-4 text-left border-b border-[#d4af37]/8">
+                      Availability
+                    </th>
+                    <th className="text-[10px] font-semibold tracking-widest text-[#666] uppercase py-3 px-4 text-left border-b border-[#d4af37]/8">
+                      Staff
+                    </th>
+                    <th className="text-[10px] font-semibold tracking-widest text-[#666] uppercase py-3 px-4 text-right border-b border-[#d4af37]/8">
+                      Bookings
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map((service) => (
+                    <tr
+                      key={service.id}
+                      onClick={() =>
+                        setSelectedServiceId(
+                          selectedServiceId === service.id
+                            ? null
+                            : service.id
+                        )
+                      }
                       className={cn(
-                        "inline-block rounded px-2 py-0.5 text-[10px] font-medium border",
-                        categoryBadge[service.categoryColor]
+                        "border-b border-[#d4af37]/5 hover:bg-[#1a1a1a] cursor-pointer transition-colors",
+                        selectedServiceId === service.id &&
+                          "bg-[#1a1a1a] border-l-2 border-l-[#d4af37]/40"
                       )}
                     >
-                      {service.category}
-                    </span>
-                  </td>
+                      {/* Service Name */}
+                      <td className="py-3 px-4">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-sm font-semibold text-white">
+                            {service.name}
+                          </span>
+                          {service.featured && (
+                            <Star className="w-3 h-3 text-purple-400 fill-purple-400" />
+                          )}
+                        </div>
+                        <p className="text-[11px] text-[#777] truncate max-w-[220px] mt-0.5">
+                          {service.description}
+                        </p>
+                      </td>
 
-                  {/* Duration */}
-                  <td className="py-3 px-4">
+                      {/* Category */}
+                      <td className="py-3 px-4">
+                        <span
+                          className={cn(
+                            "inline-block rounded px-2 py-0.5 text-[10px] font-medium border",
+                            categoryBadge[service.categoryColor] ??
+                              "bg-[#333]/30 text-[#888] border-[#333]/30"
+                          )}
+                        >
+                          {service.category}
+                        </span>
+                      </td>
+
+                      {/* Duration */}
+                      <td className="py-3 px-4">
+                        <div className="flex items-center gap-1.5 text-xs text-[#ccc]">
+                          <Clock className="w-3 h-3 text-[#888]" />
+                          {service.duration} min
+                        </div>
+                      </td>
+
+                      {/* Price */}
+                      <td className="py-3 px-4">
+                        <div className="text-sm font-semibold text-white">
+                          {formatCurrency(service.price)}
+                        </div>
+                      </td>
+
+                      {/* Availability */}
+                      <td className="py-3 px-4">
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={cn(
+                              "w-1.5 h-1.5 rounded-full",
+                              availabilityDot[service.availability] ??
+                                "bg-[#888]"
+                            )}
+                          />
+                          <span
+                            className={cn(
+                              "text-xs",
+                              availabilityText[service.availability] ??
+                                "text-[#888]"
+                            )}
+                          >
+                            {service.availability}
+                          </span>
+                        </div>
+                      </td>
+
+                      {/* Staff */}
+                      <td className="py-3 px-4">
+                        <div className="flex items-center gap-1">
+                          {service.staffIds.slice(0, 3).map((sid) => {
+                            const member = staffMap.get(sid);
+                            return member ? (
+                              <span
+                                key={sid}
+                                className="rounded bg-[#d4af37]/10 text-[#d4af37] text-[10px] font-bold px-1.5 py-0.5"
+                              >
+                                {member.initials}
+                              </span>
+                            ) : null;
+                          })}
+                          {service.staffIds.length > 3 && (
+                            <span className="text-[10px] text-[#666]">
+                              +{service.staffIds.length - 3}
+                            </span>
+                          )}
+                        </div>
+                      </td>
+
+                      {/* Bookings */}
+                      <td className="py-3 px-4 text-right">
+                        <span className="text-sm text-[#ccc] font-medium">
+                          {service.bookings}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination */}
+            <div className="flex items-center justify-between mt-4">
+              <span className="text-xs text-[#666]">
+                Showing {filtered.length} of {totalServices} services
+              </span>
+            </div>
+          </>
+        )}
+
+        {/* ── Grid View ───────────────────────────────────────────────── */}
+        {viewMode === "grid" && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
+            {filtered.map((service) => (
+              <motion.div
+                key={service.id}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3 }}
+                onClick={() =>
+                  setSelectedServiceId(
+                    selectedServiceId === service.id ? null : service.id
+                  )
+                }
+                className={cn(
+                  "premium-panel rounded-xl p-5 cursor-pointer transition-colors",
+                  "hover:border-[#d4af37]/25",
+                  selectedServiceId === service.id &&
+                    "border-[#d4af37]/40"
+                )}
+              >
+                {/* Card Header */}
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-sm font-bold text-white">
+                      {service.name}
+                    </h3>
+                    {service.featured && (
+                      <Star className="w-3 h-3 text-purple-400 fill-purple-400" />
+                    )}
+                  </div>
+                  <span
+                    className={cn(
+                      "inline-block rounded px-2 py-0.5 text-[10px] font-medium border",
+                      categoryBadge[service.categoryColor] ??
+                        "bg-[#333]/30 text-[#888] border-[#333]/30"
+                    )}
+                  >
+                    {service.category}
+                  </span>
+                </div>
+
+                {/* Description */}
+                <p className="text-xs text-[#777] line-clamp-2 mb-4">
+                  {service.description}
+                </p>
+
+                {/* Meta Row */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
                     <div className="flex items-center gap-1.5 text-xs text-[#ccc]">
                       <Clock className="w-3 h-3 text-[#888]" />
-                      {service.duration}
+                      {service.duration}m
                     </div>
-                  </td>
+                    <span className="text-sm font-semibold text-white">
+                      {formatCurrency(service.price)}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={cn(
+                        "w-1.5 h-1.5 rounded-full",
+                        availabilityDot[service.availability] ??
+                          "bg-[#888]"
+                      )}
+                    />
+                    <span
+                      className={cn(
+                        "text-[11px]",
+                        availabilityText[service.availability] ??
+                          "text-[#888]"
+                      )}
+                    >
+                      {service.availability}
+                    </span>
+                  </div>
+                </div>
 
-                  {/* Price */}
-                  <td className="py-3 px-4">
-                    <div className="text-sm font-semibold text-white">
-                      {service.price}
-                    </div>
-                    {service.priceLabel && (
-                      <div className="text-[10px] text-[#666]">
-                        {service.priceLabel}
-                      </div>
-                    )}
-                  </td>
-
-                  {/* Availability */}
-                  <td className="py-3 px-4">
-                    <div className="flex items-center gap-2">
-                      <span
-                        className={cn(
-                          "w-1.5 h-1.5 rounded-full",
-                          service.availability === "Active"
-                            ? "bg-emerald-400"
-                            : "bg-orange-400"
-                        )}
-                      />
-                      <span
-                        className={cn(
-                          "text-xs",
-                          service.availability === "Active"
-                            ? "text-emerald-400"
-                            : "text-orange-400"
-                        )}
-                      >
-                        {service.availability}
-                      </span>
-                    </div>
-                  </td>
-
-                  {/* Staff */}
-                  <td className="py-3 px-4">
-                    <div className="flex items-center gap-1">
-                      {service.staff.map((s) => (
+                {/* Footer */}
+                <div className="flex items-center justify-between mt-3 pt-3 border-t border-[#d4af37]/8">
+                  <div className="flex items-center gap-1">
+                    {service.staffIds.slice(0, 3).map((sid) => {
+                      const member = staffMap.get(sid);
+                      return member ? (
                         <span
-                          key={s}
+                          key={sid}
                           className="rounded bg-[#d4af37]/10 text-[#d4af37] text-[10px] font-bold px-1.5 py-0.5"
                         >
-                          {s}
+                          {member.initials}
                         </span>
-                      ))}
-                      {service.staffCount > 0 && (
-                        <span className="text-[10px] text-[#666]">
-                          +{service.staffCount}
-                        </span>
-                      )}
-                    </div>
-                  </td>
-
-                  {/* Bookings */}
-                  <td className="py-3 px-4 text-right">
-                    <span className="text-sm text-[#ccc] font-medium">
-                      {service.bookings}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Pagination */}
-        <div className="flex items-center justify-between mt-4">
-          <span className="text-xs text-[#666]">
-            Showing 1 to 7 of 18 services
-          </span>
-          <div className="flex items-center gap-1">
-            <button className="w-8 h-8 rounded-md bg-gradient-to-b from-[#d4af37] to-[#b8960b] text-black text-xs font-semibold flex items-center justify-center">
-              1
-            </button>
-            <button className="w-8 h-8 rounded-md bg-[#1a1a1a] border border-[#d4af37]/10 text-[#888] text-xs font-medium flex items-center justify-center hover:border-[#d4af37]/25 transition-colors">
-              2
-            </button>
-            <button className="w-8 h-8 rounded-md bg-[#1a1a1a] border border-[#d4af37]/10 text-[#888] text-xs font-medium flex items-center justify-center hover:border-[#d4af37]/25 transition-colors">
-              3
-            </button>
+                      ) : null;
+                    })}
+                    {service.staffIds.length > 3 && (
+                      <span className="text-[10px] text-[#666]">
+                        +{service.staffIds.length - 3}
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-xs text-[#888]">
+                    {service.bookings} bookings
+                  </span>
+                </div>
+              </motion.div>
+            ))}
           </div>
-        </div>
+        )}
       </div>
 
       {/* ── Service Detail Sidebar ───────────────────────────────────── */}
@@ -478,23 +602,41 @@ export function ServicesPage() {
             initial={{ opacity: 0, x: 40 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: 40 }}
-            transition={{ duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
+            transition={{
+              duration: 0.3,
+              ease: [0.25, 0.46, 0.45, 0.94],
+            }}
             className="w-[340px] flex-shrink-0"
           >
             <div className="premium-panel rounded-xl overflow-hidden">
               <div className="p-5 max-h-[calc(100vh-3rem)] overflow-y-auto">
                 {/* Header */}
                 <div className="relative mb-4">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <h2 className="text-lg font-bold text-white">
                       {selectedService.name}
                     </h2>
                     {selectedService.featured && (
                       <Star className="w-4 h-4 text-purple-400 fill-purple-400" />
                     )}
-                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 border border-emerald-500/20 px-2 py-0.5 text-[10px] font-medium text-emerald-400">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                      Active
+                    <span
+                      className={cn(
+                        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium border",
+                        selectedService.availability === "Active" &&
+                          "bg-emerald-500/15 border-emerald-500/20 text-emerald-400",
+                        selectedService.availability === "Limited" &&
+                          "bg-orange-500/15 border-orange-500/20 text-orange-400",
+                        selectedService.availability === "Inactive" &&
+                          "bg-red-500/15 border-red-500/20 text-red-400"
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          "w-1.5 h-1.5 rounded-full",
+                          availabilityDot[selectedService.availability]
+                        )}
+                      />
+                      {selectedService.availability}
                     </span>
                   </div>
                   <button
@@ -503,6 +645,19 @@ export function ServicesPage() {
                   >
                     <X className="w-4 h-4" />
                   </button>
+                </div>
+
+                {/* Category Badge */}
+                <div className="mb-4">
+                  <span
+                    className={cn(
+                      "inline-block rounded px-2.5 py-1 text-[11px] font-medium border",
+                      categoryBadge[selectedService.categoryColor] ??
+                        "bg-[#333]/30 text-[#888] border-[#333]/30"
+                    )}
+                  >
+                    {selectedService.category}
+                  </span>
                 </div>
 
                 {/* Description */}
@@ -517,10 +672,22 @@ export function ServicesPage() {
                   </h3>
                   <div className="grid grid-cols-2 gap-2">
                     {[
-                      { label: "Duration", value: selectedService.duration },
-                      { label: "Price", value: selectedService.price },
-                      { label: "Buffer Time", value: "15 min" },
-                      { label: "Min. Notice", value: "2 hrs" },
+                      {
+                        label: "Duration",
+                        value: `${selectedService.duration} min`,
+                      },
+                      {
+                        label: "Price",
+                        value: formatCurrency(selectedService.price),
+                      },
+                      {
+                        label: "Bookings",
+                        value: selectedService.bookings.toString(),
+                      },
+                      {
+                        label: "Availability",
+                        value: selectedService.availability,
+                      },
                     ].map((item) => (
                       <div
                         key={item.label}
@@ -537,7 +704,7 @@ export function ServicesPage() {
                   </div>
                 </div>
 
-                {/* Pricing Tiers */}
+                {/* Pricing Tiers (visual) */}
                 <div className="mb-5">
                   <div className="flex items-center justify-between mb-3">
                     <h3 className="text-[10px] font-semibold tracking-widest text-[#666] uppercase">
@@ -553,10 +720,10 @@ export function ServicesPage() {
                       </div>
                       <div className="text-right">
                         <span className="text-sm text-white font-semibold">
-                          $120
+                          {formatCurrency(selectedService.price)}
                         </span>
                         <span className="text-[10px] text-[#666] ml-2">
-                          60 min
+                          {selectedService.duration} min
                         </span>
                       </div>
                     </div>
@@ -569,10 +736,12 @@ export function ServicesPage() {
                       </div>
                       <div className="text-right">
                         <span className="text-sm text-white font-semibold">
-                          $180
+                          {formatCurrency(
+                            Math.round(selectedService.price * 1.5)
+                          )}
                         </span>
                         <span className="text-[10px] text-[#666] ml-2">
-                          60 min
+                          {selectedService.duration} min
                         </span>
                       </div>
                     </div>
@@ -585,10 +754,12 @@ export function ServicesPage() {
                       </div>
                       <div className="text-right">
                         <span className="text-sm text-white font-semibold">
-                          $250
+                          {formatCurrency(
+                            Math.round(selectedService.price * 2)
+                          )}
                         </span>
                         <span className="text-[10px] text-[#666] ml-2">
-                          60 min
+                          {selectedService.duration} min
                         </span>
                       </div>
                     </div>
@@ -609,44 +780,32 @@ export function ServicesPage() {
                       Manage
                     </PremiumButton>
                   </div>
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    {["SA", "SB", "SC", "SD", "SE"].map((s) => (
-                      <span
-                        key={s}
-                        className="rounded bg-[#d4af37]/10 text-[#d4af37] text-[10px] font-bold px-1.5 py-0.5"
-                      >
-                        {s}
-                      </span>
-                    ))}
-                    <button className="rounded bg-[#1a1a1a] border border-[#d4af37]/10 text-[#666] text-[10px] font-medium px-1.5 py-0.5 hover:border-[#d4af37]/25 hover:text-[#d4af37] transition-colors cursor-pointer">
-                      <Plus className="w-3 h-3 inline-block" />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Resources */}
-                <div className="mb-5">
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-[10px] font-semibold tracking-widest text-[#666] uppercase">
-                      Resources
-                    </h3>
-                    <PremiumButton variant="ghost" size="sm">
-                      Manage
-                    </PremiumButton>
-                  </div>
-                  <div className="space-y-1.5">
-                    {["Conference Room A", "Projector", "Whiteboard"].map(
-                      (r) => (
+                  {resolvedStaff.length > 0 ? (
+                    <div className="space-y-1.5">
+                      {resolvedStaff.map((member) => (
                         <div
-                          key={r}
-                          className="text-xs text-[#aaa] bg-[#0e0e0e] rounded-md px-3 py-2"
+                          key={member.id}
+                          className="flex items-center gap-3 bg-[#0e0e0e] rounded-lg px-3 py-2.5"
                         >
-                          {r}
+                          <span className="w-7 h-7 rounded-full bg-gradient-to-br from-[#d4af37]/20 to-[#d4af37]/5 border border-[#d4af37]/20 flex items-center justify-center text-[10px] font-bold text-[#d4af37]">
+                            {member.initials}
+                          </span>
+                          <div>
+                            <div className="text-sm text-white font-medium">
+                              {member.name}
+                            </div>
+                            <div className="text-[11px] text-[#777]">
+                              {member.role}
+                            </div>
+                          </div>
                         </div>
-                      )
-                    )}
-                    <span className="text-xs text-[#666]">+2 more</span>
-                  </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-xs text-[#666] py-2">
+                      No staff assigned
+                    </div>
+                  )}
                 </div>
 
                 {/* Available Hours */}
@@ -671,11 +830,19 @@ export function ServicesPage() {
 
                 {/* Action Buttons */}
                 <div className="space-y-2 pt-4 border-t border-[#d4af37]/8">
-                  <PremiumButton variant="primary" size="md" className="w-full">
+                  <PremiumButton
+                    variant="primary"
+                    size="md"
+                    className="w-full"
+                  >
                     <Pencil className="w-4 h-4" />
                     Edit Service
                   </PremiumButton>
-                  <PremiumButton variant="secondary" size="md" className="w-full">
+                  <PremiumButton
+                    variant="secondary"
+                    size="md"
+                    className="w-full"
+                  >
                     <Copy className="w-4 h-4" />
                     Duplicate
                   </PremiumButton>

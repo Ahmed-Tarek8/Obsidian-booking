@@ -1,10 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { StatCard } from "./StatCard";
 import { PremiumButton } from "./PremiumButton";
 import { cn } from "@/lib/utils";
+import { useBookingStore } from "@/lib/store";
+import type { IntegrationStatus } from "@/lib/types";
 import {
   RefreshCw,
   Clock,
@@ -30,144 +32,25 @@ import {
   Unplug,
   Settings2,
   Zap,
+  Webhook,
+  Workflow,
 } from "lucide-react";
 
-// ── Types ────────────────────────────────────────────────────────────────
-type IntegrationStatus = "Connected" | "Setup Required" | "Disconnected";
-
-interface Integration {
-  id: string;
-  name: string;
-  icon: any;
-  status: IntegrationStatus;
-  lastSync: string;
-  permissions: string;
-  description: string;
-}
-
-interface SyncEvent {
-  id: string;
-  action: string;
-  time: string;
-  details: string;
-}
-
-// ── Data ─────────────────────────────────────────────────────────────────
-const integrations: Integration[] = [
-  {
-    id: "int-1",
-    name: "Calendar Sync",
-    icon: CalendarDays,
-    status: "Connected",
-    lastSync: "2 min ago",
-    permissions: "Read/Write",
-    description:
-      "Sync your booking calendar with Google Calendar, Outlook, and other calendar providers. Automatically create, update, and cancel events across platforms in real time.",
-  },
-  {
-    id: "int-2",
-    name: "Payments Gateway",
-    icon: CreditCard,
-    status: "Connected",
-    lastSync: "5 min ago",
-    permissions: "Read/Write",
-    description:
-      "Process payments securely through Stripe, PayPal, and other gateways. Supports recurring billing, refunds, and multi-currency transactions.",
-  },
-  {
-    id: "int-3",
-    name: "Video Meetings",
-    icon: Video,
-    status: "Connected",
-    lastSync: "1 hr ago",
-    permissions: "Read/Write",
-    description:
-      "Automatically generate Zoom, Google Meet, or Microsoft Teams links for virtual appointments. Handles meeting creation and updates.",
-  },
-  {
-    id: "int-4",
-    name: "Email Marketing",
-    icon: Mail,
-    status: "Connected",
-    lastSync: "15 min ago",
-    permissions: "Read/Write",
-    description:
-      "Connect with Mailchimp, ConvertKit, or SendGrid to automate email campaigns, confirmations, and follow-ups based on booking activity.",
-  },
-  {
-    id: "int-5",
-    name: "CRM System",
-    icon: Users,
-    status: "Connected",
-    lastSync: "30 min ago",
-    permissions: "Read, Write",
-    description:
-      "Sync client data with Salesforce, HubSpot, or Pipedrive. Keep customer profiles, interaction history, and pipeline data in sync.",
-  },
-  {
-    id: "int-6",
-    name: "Analytics",
-    icon: BarChart3,
-    status: "Connected",
-    lastSync: "10 min ago",
-    permissions: "Read Only",
-    description:
-      "Connect Google Analytics, Mixpanel, or Amplitude to track booking funnels, conversion rates, and user behavior across your platform.",
-  },
-  {
-    id: "int-7",
-    name: "SMS Notifications",
-    icon: MessageSquare,
-    status: "Setup Required",
-    lastSync: "Not configured",
-    permissions: "Read/Write",
-    description:
-      "Send SMS reminders, confirmations, and alerts via Twilio or Vonage. Reduce no-shows with automated text notifications.",
-  },
-  {
-    id: "int-8",
-    name: "Social Media",
-    icon: Share2,
-    status: "Disconnected",
-    lastSync: "3 days ago",
-    permissions: "Read/Write",
-    description:
-      "Auto-post booking availability to Facebook, Instagram, and Twitter. Sync social engagement data back to client profiles.",
-  },
-];
-
-const syncHistory: SyncEvent[] = [
-  {
-    id: "sh-1",
-    action: "Sync completed",
-    time: "2 min ago",
-    details: "12 bookings synced",
-  },
-  {
-    id: "sh-2",
-    action: "Sync completed",
-    time: "17 min ago",
-    details: "8 bookings synced",
-  },
-  {
-    id: "sh-3",
-    action: "Sync completed",
-    time: "32 min ago",
-    details: "5 bookings synced",
-  },
-];
-
-// ── Icon Color Map ───────────────────────────────────────────────────────
-const iconColors: Record<string, string> = {
-  "Calendar Sync": "text-yellow-400 bg-yellow-500/10 border-yellow-500/20",
-  "Payments Gateway": "text-purple-400 bg-purple-500/10 border-purple-500/20",
-  "Video Meetings": "text-blue-400 bg-blue-500/10 border-blue-500/20",
-  "Email Marketing": "text-green-400 bg-green-500/10 border-green-500/20",
-  "CRM System": "text-orange-400 bg-orange-500/10 border-orange-500/20",
-  "Analytics": "text-cyan-400 bg-cyan-500/10 border-cyan-500/20",
-  "SMS Notifications": "text-pink-400 bg-pink-500/10 border-pink-500/20",
-  "Social Media": "text-indigo-400 bg-indigo-500/10 border-indigo-500/20",
+// ── Icon mapping by integration name ──────────────────────────────────────
+const iconMap: Record<string, any> = {
+  "Calendar Sync": CalendarDays,
+  "Payments Gateway": CreditCard,
+  "Video Meetings": Video,
+  "Messaging": MessageSquare,
+  "Email Marketing": Mail,
+  Automation: Workflow,
+  "CRM Sync": Users,
+  Webhooks: Webhook,
 };
+
+function getIcon(name: string) {
+  return iconMap[name] ?? BarChart3;
+}
 
 // ── Status Badge Styles ──────────────────────────────────────────────────
 const statusStyles: Record<
@@ -179,7 +62,17 @@ const statusStyles: Record<
     text: "text-emerald-400",
     badge: "bg-emerald-500/15 border-emerald-500/20 text-emerald-400",
   },
-  "Setup Required": {
+  Active: {
+    dot: "bg-emerald-400",
+    text: "text-emerald-400",
+    badge: "bg-emerald-500/15 border-emerald-500/20 text-emerald-400",
+  },
+  Warning: {
+    dot: "bg-orange-400",
+    text: "text-orange-400",
+    badge: "bg-orange-500/15 border-orange-500/20 text-orange-400",
+  },
+  Pending: {
     dot: "bg-orange-400",
     text: "text-orange-400",
     badge: "bg-orange-500/15 border-orange-500/20 text-orange-400",
@@ -192,7 +85,17 @@ const statusStyles: Record<
 };
 
 // ── Filter Dropdown Component ────────────────────────────────────────────
-function FilterDropdown({ label, icon: Icon }: { label: string; icon: any }) {
+function FilterDropdown({
+  label,
+  value,
+  onChange,
+  options,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  options: string[];
+}) {
   const [open, setOpen] = useState(false);
   return (
     <div className="relative">
@@ -200,8 +103,7 @@ function FilterDropdown({ label, icon: Icon }: { label: string; icon: any }) {
         onClick={() => setOpen(!open)}
         className="premium-btn flex items-center gap-2 px-3.5 py-2 rounded-lg text-[13px] text-[#ccc] font-medium bg-gradient-to-b from-[#1e1e1e] to-[#161616] border border-[#d4af37]/10 hover:border-[#d4af37]/25 hover:text-[#e0e0e0] transition-all cursor-pointer shadow-[0_1px_2px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.03)]"
       >
-        <Icon className="w-3.5 h-3.5 text-[#d4af37]/60" />
-        <span>{label}</span>
+        <span>{value === "__all__" ? label : value}</span>
         <ChevronDown
           className={cn(
             "w-3 h-3 text-[#666] transition-transform",
@@ -209,16 +111,84 @@ function FilterDropdown({ label, icon: Icon }: { label: string; icon: any }) {
           )}
         />
       </button>
+      {open && (
+        <div className="absolute top-full left-0 mt-1 z-20 premium-panel rounded-lg border border-[#d4af37]/10 shadow-lg py-1 min-w-[140px]">
+          {options.map((opt) => (
+            <button
+              key={opt}
+              onClick={() => {
+                onChange(opt);
+                setOpen(false);
+              }}
+              className={cn(
+                "w-full text-left px-3 py-2 text-[13px] transition-colors cursor-pointer",
+                value === opt
+                  ? "text-[#d4af37] bg-[#d4af37]/5"
+                  : "text-[#ccc] hover:bg-[#1a1a1a] hover:text-white"
+              )}
+            >
+              {opt}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
 
 // ── Component ────────────────────────────────────────────────────────────
 export function IntegrationsPage() {
+  const integrations = useBookingStore((s) => s.integrations);
+
   const [selectedIntegrationId, setSelectedIntegrationId] = useState<string>(
-    "int-1"
+    integrations[0]?.id ?? ""
   );
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("__all__");
+  const [statusFilter, setStatusFilter] = useState("__all__");
+
+  // ── Computed stats ──────────────────────────────────────────────────
+  const stats = useMemo(() => {
+    const connectedApps = integrations.filter(
+      (i) => i.status === "Connected" || i.status === "Active"
+    ).length;
+    const pendingSetups = integrations.filter(
+      (i) => i.status === "Pending" || i.status === "Warning"
+    ).length;
+    return { connectedApps, pendingSetups };
+  }, [integrations]);
+
+  // ── Filtered integrations ──────────────────────────────────────────
+  const filteredIntegrations = useMemo(() => {
+    return integrations.filter((i) => {
+      if (
+        searchQuery &&
+        !i.name.toLowerCase().includes(searchQuery.toLowerCase()) &&
+        !i.description.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+        return false;
+      if (categoryFilter !== "__all__" && i.category !== categoryFilter)
+        return false;
+      if (statusFilter !== "__all__" && i.status !== statusFilter)
+        return false;
+      return true;
+    });
+  }, [integrations, searchQuery, categoryFilter, statusFilter]);
+
+  // ── Unique filter options ───────────────────────────────────────────
+  const categories = useMemo(() => {
+    const set = new Set(integrations.map((i) => i.category));
+    return Array.from(set);
+  }, [integrations]);
+
+  const statuses: IntegrationStatus[] = [
+    "Connected",
+    "Active",
+    "Warning",
+    "Disconnected",
+    "Pending",
+  ];
 
   const selectedIntegration = integrations.find(
     (i) => i.id === selectedIntegrationId
@@ -240,15 +210,15 @@ export function IntegrationsPage() {
         <div className="grid grid-cols-4 gap-4 mb-5">
           <StatCard
             title="Connected Apps"
-            value="24"
-            change="4 new this month"
+            value={String(stats.connectedApps)}
+            change={`${stats.connectedApps} connected`}
             changeType="up"
             icon={RefreshCw}
             delay={0}
           />
           <StatCard
             title="Pending Setups"
-            value="3"
+            value={String(stats.pendingSetups)}
             change="Requires attention"
             changeType="down"
             icon={Clock}
@@ -280,14 +250,31 @@ export function IntegrationsPage() {
             <input
               type="text"
               placeholder="Search integrations..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
               className="bg-[#1a1a1a] border border-[#d4af37]/10 rounded-lg pl-9 pr-3 py-2 text-sm text-white placeholder:text-[#555] w-64 outline-none focus:border-[#d4af37]/30 transition-colors"
             />
           </div>
 
           {/* Filter Dropdowns */}
-          <FilterDropdown label="All Categories" icon={Filter} />
-          <FilterDropdown label="All Status" icon={Activity} />
-          <FilterDropdown label="All Connections" icon={RefreshCw} />
+          <FilterDropdown
+            label="All Categories"
+            value={categoryFilter}
+            onChange={setCategoryFilter}
+            options={["__all__", "All Categories", ...categories]}
+          />
+          <FilterDropdown
+            label="All Status"
+            value={statusFilter}
+            onChange={setStatusFilter}
+            options={["__all__", "All Status", ...statuses]}
+          />
+          <FilterDropdown
+            label="All Connections"
+            value="__all__"
+            onChange={() => {}}
+            options={["__all__", "All Connections"]}
+          />
 
           {/* Filters Button */}
           <PremiumButton variant="secondary" size="sm">
@@ -324,10 +311,14 @@ export function IntegrationsPage() {
 
         {/* Integration Cards Grid */}
         <div className="grid grid-cols-2 gap-4">
-          {integrations.map((integration, index) => {
-            const IconComp = integration.icon;
-            const colors = iconColors[integration.name] ?? "";
+          {filteredIntegrations.map((integration, index) => {
+            const IconComp = getIcon(integration.name);
             const status = statusStyles[integration.status];
+
+            // Parse iconColor to Tailwind classes
+            const colorBase = integration.iconColor.replace("text-", "");
+            const iconBg = `bg-${colorBase}/10 border-${colorBase}/20`;
+            const iconText = integration.iconColor;
 
             return (
               <motion.div
@@ -339,13 +330,7 @@ export function IntegrationsPage() {
                   delay: index * 0.04,
                   ease: [0.25, 0.46, 0.45, 0.94],
                 }}
-                onClick={() =>
-                  setSelectedIntegrationId(
-                    selectedIntegrationId === integration.id
-                      ? integration.id
-                      : integration.id
-                  )
-                }
+                onClick={() => setSelectedIntegrationId(integration.id)}
                 className={cn(
                   "premium-panel rounded-xl p-4 cursor-pointer transition-all group relative",
                   selectedIntegrationId === integration.id
@@ -359,8 +344,47 @@ export function IntegrationsPage() {
                     <div
                       className={cn(
                         "w-10 h-10 rounded-lg flex items-center justify-center border",
-                        colors
+                        iconBg,
+                        iconText
                       )}
+                      style={{
+                        backgroundColor:
+                          integration.iconColor === "text-yellow-500"
+                            ? "rgba(234,179,8,0.1)"
+                            : integration.iconColor === "text-purple-500"
+                              ? "rgba(168,85,247,0.1)"
+                              : integration.iconColor === "text-blue-500"
+                                ? "rgba(59,130,246,0.1)"
+                                : integration.iconColor === "text-green-500"
+                                  ? "rgba(34,197,94,0.1)"
+                                  : integration.iconColor === "text-purple-400"
+                                    ? "rgba(168,85,247,0.08)"
+                                    : integration.iconColor === "text-yellow-400"
+                                      ? "rgba(234,179,8,0.08)"
+                                    : integration.iconColor === "text-blue-400"
+                                      ? "rgba(96,165,250,0.08)"
+                                      : integration.iconColor === "text-red-400"
+                                        ? "rgba(248,113,113,0.1)"
+                                        : "rgba(255,255,255,0.05)",
+                        borderColor:
+                          integration.iconColor === "text-yellow-500"
+                            ? "rgba(234,179,8,0.2)"
+                            : integration.iconColor === "text-purple-500"
+                              ? "rgba(168,85,247,0.2)"
+                              : integration.iconColor === "text-blue-500"
+                                ? "rgba(59,130,246,0.2)"
+                                : integration.iconColor === "text-green-500"
+                                  ? "rgba(34,197,94,0.2)"
+                                  : integration.iconColor === "text-purple-400"
+                                    ? "rgba(168,85,247,0.15)"
+                                    : integration.iconColor === "text-yellow-400"
+                                      ? "rgba(234,179,8,0.15)"
+                                      : integration.iconColor === "text-blue-400"
+                                        ? "rgba(96,165,250,0.15)"
+                                        : integration.iconColor === "text-red-400"
+                                          ? "rgba(248,113,113,0.2)"
+                                          : "rgba(255,255,255,0.08)",
+                      }}
                     >
                       <IconComp className="w-5 h-5" />
                     </div>
@@ -403,10 +427,18 @@ export function IntegrationsPage() {
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] text-[#666] uppercase tracking-wider font-medium">
-                      Permissions
+                      Records Synced
                     </span>
                     <span className="text-xs text-[#999]">
-                      {integration.permissions}
+                      {integration.recordsSynced}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] text-[#666] uppercase tracking-wider font-medium">
+                      Sync Frequency
+                    </span>
+                    <span className="text-xs text-[#999]">
+                      {integration.syncFrequency}
                     </span>
                   </div>
                 </div>
@@ -451,15 +483,20 @@ export function IntegrationsPage() {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2.5">
                       {(() => {
-                        const IconComp = selectedIntegration.icon;
-                        const colors =
-                          iconColors[selectedIntegration.name] ?? "";
+                        const IconComp = getIcon(selectedIntegration.name);
+                        const colorBase =
+                          selectedIntegration.iconColor.replace("text-", "");
                         return (
                           <div
                             className={cn(
                               "w-8 h-8 rounded-lg flex items-center justify-center border",
-                              colors
+                              `bg-${colorBase}/10 border-${colorBase}/20`,
+                              selectedIntegration.iconColor
                             )}
+                            style={{
+                              backgroundColor: "rgba(255,255,255,0.05)",
+                              borderColor: "rgba(212,175,55,0.15)",
+                            }}
                           >
                             <IconComp className="w-4 h-4" />
                           </div>
@@ -537,21 +574,21 @@ export function IntegrationsPage() {
                     <div className="bg-[#0e0e0e] rounded-lg px-3 py-2.5 flex items-center justify-between">
                       <div>
                         <div className="text-[10px] text-[#666] uppercase">
-                          Sync Direction
+                          Category
                         </div>
                         <div className="text-sm text-white font-medium mt-0.5">
-                          Two-way
+                          {selectedIntegration.category}
                         </div>
                       </div>
-                      <ArrowRightLeft className="w-4 h-4 text-[#666]" />
+                      <BarChart3 className="w-4 h-4 text-[#666]" />
                     </div>
                     <div className="bg-[#0e0e0e] rounded-lg px-3 py-2.5 flex items-center justify-between">
                       <div>
                         <div className="text-[10px] text-[#666] uppercase">
-                          Sync Interval
+                          Sync Frequency
                         </div>
                         <div className="text-sm text-white font-medium mt-0.5">
-                          15 min
+                          {selectedIntegration.syncFrequency}
                         </div>
                       </div>
                       <Clock className="w-4 h-4 text-[#666]" />
@@ -559,47 +596,30 @@ export function IntegrationsPage() {
                     <div className="bg-[#0e0e0e] rounded-lg px-3 py-2.5 flex items-center justify-between">
                       <div>
                         <div className="text-[10px] text-[#666] uppercase">
-                          Calendar ID
+                          Records Synced
                         </div>
                         <div className="text-sm text-white font-medium mt-0.5">
-                          primary@obsidian.app
+                          {selectedIntegration.recordsSynced}
                         </div>
                       </div>
-                      <CalendarDays className="w-4 h-4 text-[#666]" />
+                      <ArrowRightLeft className="w-4 h-4 text-[#666]" />
                     </div>
                   </div>
                 </div>
 
-                {/* Sync History */}
-                <div className="mb-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-[10px] font-semibold tracking-widest text-[#666] uppercase">
-                      Sync History
-                    </h3>
-                    <PremiumButton variant="ghost" size="sm">
-                      View All
-                    </PremiumButton>
-                  </div>
-                  <div className="space-y-2">
-                    {syncHistory.map((event) => (
+                {/* Permissions */}
+                <div className="mb-5">
+                  <h3 className="text-[10px] font-semibold tracking-widest text-[#666] uppercase mb-3">
+                    Permissions
+                  </h3>
+                  <div className="space-y-1.5">
+                    {selectedIntegration.permissions.map((perm) => (
                       <div
-                        key={event.id}
-                        className="flex items-start gap-3 bg-[#0e0e0e] rounded-lg px-3 py-2.5"
+                        key={perm}
+                        className="flex items-center gap-2 bg-[#0e0e0e] rounded-lg px-3 py-2"
                       >
-                        <CheckCircle2 className="w-4 h-4 text-emerald-400 mt-0.5 flex-shrink-0" />
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs text-white font-medium">
-                              {event.action}
-                            </span>
-                            <span className="text-[10px] text-[#666] flex-shrink-0 ml-2">
-                              {event.time}
-                            </span>
-                          </div>
-                          <p className="text-[11px] text-[#888] mt-0.5">
-                            {event.details}
-                          </p>
-                        </div>
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                        <span className="text-xs text-[#ccc]">{perm}</span>
                       </div>
                     ))}
                   </div>

@@ -1,9 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { PremiumButton } from "@/components/dashboard/PremiumButton";
+import { useBookingStore, formatCurrency, formatTime12 } from "@/lib/store";
+import type { StaffRole, StaffStatus } from "@/lib/types";
 import {
   Users,
   UserCheck,
@@ -17,7 +19,6 @@ import {
   Calendar,
   MessageSquare,
   UserPlus,
-  MoreHorizontal,
   Pencil,
   Mail,
   Phone,
@@ -30,327 +31,6 @@ import {
   Eye,
   Briefcase,
 } from "lucide-react";
-
-// ── Types ────────────────────────────────────────────────────────────────
-
-type StaffStatus = "Active" | "On Leave" | "Day Off";
-type StaffRole = "Manager" | "Consultant" | "Specialist" | "Support" | "Coordinator";
-
-interface StaffMember {
-  id: string;
-  initials: string;
-  name: string;
-  role: StaffRole;
-  availableToday: string;
-  upcomingBookings: number;
-  nextBookingTime: string;
-  rating: number;
-  reviewCount: number;
-  revenueMTD: string;
-  hoursWorked: string;
-  status: StaffStatus;
-  skills: string[];
-  assignedServices: { name: string; price: string }[];
-  email: string;
-  phone: string;
-  location: string;
-  weeklyHours: { day: string; hours: string; active: boolean }[];
-}
-
-// ── Data ─────────────────────────────────────────────────────────────────
-
-const staffMembers: StaffMember[] = [
-  {
-    id: "sc",
-    initials: "SC",
-    name: "Staff C",
-    role: "Manager",
-    availableToday: "8:00 AM – 6:00 PM",
-    upcomingBookings: 6,
-    nextBookingTime: "10:30 AM",
-    rating: 4.9,
-    reviewCount: 124,
-    revenueMTD: "$6,420",
-    hoursWorked: "12.4 hrs",
-    status: "Active",
-    skills: ["Consultation", "Client Relations", "Problem Solving"],
-    assignedServices: [
-      { name: "Executive Consultation", price: "$150" },
-      { name: "Premium Consultation", price: "$120" },
-      { name: "Strategic Session", price: "$130" },
-      { name: "Project Review", price: "$130" },
-    ],
-    email: "staff.c@obsidian.com",
-    phone: "+1 (555) 123-4567",
-    location: "Studio A – Executive Suite",
-    weeklyHours: [
-      { day: "MON", hours: "8–6", active: true },
-      { day: "TUE", hours: "9–7", active: true },
-      { day: "WED", hours: "8–6", active: true },
-      { day: "THU", hours: "8–6", active: true },
-      { day: "FRI", hours: "9–5", active: true },
-      { day: "SAT", hours: "9–5", active: true },
-      { day: "SUN", hours: "9–5", active: false },
-    ],
-  },
-  {
-    id: "sa",
-    initials: "SA",
-    name: "Staff A",
-    role: "Consultant",
-    availableToday: "9:00 AM – 7:00 PM",
-    upcomingBookings: 5,
-    nextBookingTime: "11:15 AM",
-    rating: 4.8,
-    reviewCount: 98,
-    revenueMTD: "$4,980",
-    hoursWorked: "10.1 hrs",
-    status: "Active",
-    skills: ["Strategic Planning", "Data Analysis", "Presentation"],
-    assignedServices: [
-      { name: "Consultation", price: "$120" },
-      { name: "Strategy Session", price: "$250" },
-      { name: "Review Meeting", price: "$130" },
-    ],
-    email: "staff.a@obsidian.com",
-    phone: "+1 (555) 234-5678",
-    location: "Studio B – Consultation Room",
-    weeklyHours: [
-      { day: "MON", hours: "9–7", active: true },
-      { day: "TUE", hours: "9–7", active: true },
-      { day: "WED", hours: "9–7", active: true },
-      { day: "THU", hours: "9–5", active: true },
-      { day: "FRI", hours: "9–5", active: true },
-      { day: "SAT", hours: "10–4", active: true },
-      { day: "SUN", hours: "—", active: false },
-    ],
-  },
-  {
-    id: "sb",
-    initials: "SB",
-    name: "Staff B",
-    role: "Specialist",
-    availableToday: "10:00 AM – 8:00 PM",
-    upcomingBookings: 7,
-    nextBookingTime: "12:00 PM",
-    rating: 4.7,
-    reviewCount: 108,
-    revenueMTD: "$4,215",
-    hoursWorked: "9.3 hrs",
-    status: "Active",
-    skills: ["Technical Assessment", "Implementation", "Quality Assurance"],
-    assignedServices: [
-      { name: "Deep Dive Session", price: "$180" },
-      { name: "Technical Review", price: "$140" },
-      { name: "Equipment Booking", price: "$90" },
-    ],
-    email: "staff.b@obsidian.com",
-    phone: "+1 (555) 345-6789",
-    location: "Studio C – Specialist Bay",
-    weeklyHours: [
-      { day: "MON", hours: "10–8", active: true },
-      { day: "TUE", hours: "10–8", active: true },
-      { day: "WED", hours: "10–8", active: true },
-      { day: "THU", hours: "10–8", active: true },
-      { day: "FRI", hours: "10–6", active: true },
-      { day: "SAT", hours: "10–4", active: true },
-      { day: "SUN", hours: "—", active: false },
-    ],
-  },
-  {
-    id: "sd",
-    initials: "SD",
-    name: "Staff D",
-    role: "Support",
-    availableToday: "9:00 AM – 6:00 PM",
-    upcomingBookings: 3,
-    nextBookingTime: "2:00 PM",
-    rating: 4.6,
-    reviewCount: 96,
-    revenueMTD: "$2,310",
-    hoursWorked: "6.8 hrs",
-    status: "Active",
-    skills: ["Customer Support", "Scheduling", "Documentation"],
-    assignedServices: [
-      { name: "Onboarding Session", price: "$80" },
-      { name: "Support Call", price: "$60" },
-    ],
-    email: "staff.d@obsidian.com",
-    phone: "+1 (555) 456-7890",
-    location: "Studio A – Front Desk",
-    weeklyHours: [
-      { day: "MON", hours: "9–6", active: true },
-      { day: "TUE", hours: "9–6", active: true },
-      { day: "WED", hours: "9–6", active: true },
-      { day: "THU", hours: "9–6", active: true },
-      { day: "FRI", hours: "9–6", active: true },
-      { day: "SAT", hours: "10–2", active: false },
-      { day: "SUN", hours: "—", active: false },
-    ],
-  },
-  {
-    id: "se",
-    initials: "SE",
-    name: "Staff E",
-    role: "Coordinator",
-    availableToday: "8:30 AM – 5:30 PM",
-    upcomingBookings: 2,
-    nextBookingTime: "1:30 PM",
-    rating: 4.8,
-    reviewCount: 72,
-    revenueMTD: "$2,880",
-    hoursWorked: "7.2 hrs",
-    status: "Active",
-    skills: ["Event Planning", "Team Coordination", "Logistics"],
-    assignedServices: [
-      { name: "Planning Review", price: "$100" },
-      { name: "Workspace Tour", price: "$50" },
-      { name: "Team Workshop", price: "$200" },
-    ],
-    email: "staff.e@obsidian.com",
-    phone: "+1 (555) 567-8901",
-    location: "Studio B – Coordination Office",
-    weeklyHours: [
-      { day: "MON", hours: "8:30–5:30", active: true },
-      { day: "TUE", hours: "8:30–5:30", active: true },
-      { day: "WED", hours: "8:30–5:30", active: true },
-      { day: "THU", hours: "8:30–5:30", active: true },
-      { day: "FRI", hours: "8:30–5:30", active: true },
-      { day: "SAT", hours: "—", active: false },
-      { day: "SUN", hours: "—", active: false },
-    ],
-  },
-  {
-    id: "sf",
-    initials: "SF",
-    name: "Staff F",
-    role: "Specialist",
-    availableToday: "12:00 PM – 9:00 PM",
-    upcomingBookings: 4,
-    nextBookingTime: "3:30 PM",
-    rating: 4.7,
-    reviewCount: 51,
-    revenueMTD: "$2,880",
-    hoursWorked: "6.2 hrs",
-    status: "Active",
-    skills: ["Creative Direction", "Brand Strategy", "Visual Design"],
-    assignedServices: [
-      { name: "Creative Session", price: "$160" },
-      { name: "Brand Consultation", price: "$130" },
-    ],
-    email: "staff.f@obsidian.com",
-    phone: "+1 (555) 678-9012",
-    location: "Studio D – Creative Lab",
-    weeklyHours: [
-      { day: "MON", hours: "12–9", active: true },
-      { day: "TUE", hours: "12–9", active: true },
-      { day: "WED", hours: "12–9", active: true },
-      { day: "THU", hours: "12–9", active: true },
-      { day: "FRI", hours: "12–9", active: true },
-      { day: "SAT", hours: "—", active: false },
-      { day: "SUN", hours: "—", active: false },
-    ],
-  },
-  {
-    id: "sg",
-    initials: "SG",
-    name: "Staff G",
-    role: "Consultant",
-    availableToday: "Day Off",
-    upcomingBookings: 0,
-    nextBookingTime: "—",
-    rating: 4.5,
-    reviewCount: 38,
-    revenueMTD: "$1,250",
-    hoursWorked: "3.1 hrs",
-    status: "On Leave",
-    skills: ["Financial Analysis", "Risk Assessment", "Compliance"],
-    assignedServices: [
-      { name: "Financial Review", price: "$150" },
-      { name: "Risk Assessment", price: "$120" },
-    ],
-    email: "staff.g@obsidian.com",
-    phone: "+1 (555) 789-0123",
-    location: "Studio A – Executive Suite",
-    weeklyHours: [
-      { day: "MON", hours: "—", active: false },
-      { day: "TUE", hours: "—", active: false },
-      { day: "WED", hours: "—", active: false },
-      { day: "THU", hours: "—", active: false },
-      { day: "FRI", hours: "—", active: false },
-      { day: "SAT", hours: "—", active: false },
-      { day: "SUN", hours: "—", active: false },
-    ],
-  },
-  {
-    id: "sh",
-    initials: "SH",
-    name: "Staff H",
-    role: "Support",
-    availableToday: "9:00 AM – 6:00 PM",
-    upcomingBookings: 1,
-    nextBookingTime: "4:15 PM",
-    rating: 4.6,
-    reviewCount: 29,
-    revenueMTD: "$1,050",
-    hoursWorked: "2.7 hrs",
-    status: "Active",
-    skills: ["Client Onboarding", "Admin Support", "Data Entry"],
-    assignedServices: [
-      { name: "Onboarding Session", price: "$80" },
-      { name: "General Inquiry", price: "$40" },
-    ],
-    email: "staff.h@obsidian.com",
-    phone: "+1 (555) 890-1234",
-    location: "Studio A – Front Desk",
-    weeklyHours: [
-      { day: "MON", hours: "9–6", active: true },
-      { day: "TUE", hours: "9–6", active: true },
-      { day: "WED", hours: "9–6", active: true },
-      { day: "THU", hours: "9–6", active: true },
-      { day: "FRI", hours: "9–6", active: true },
-      { day: "SAT", hours: "9–1", active: true },
-      { day: "SUN", hours: "—", active: false },
-    ],
-  },
-];
-
-// ── Stat Cards ───────────────────────────────────────────────────────────
-
-const stats = [
-  {
-    label: "TEAM MEMBERS",
-    value: "18",
-    trend: "+ 2 vs last month",
-    icon: Users,
-    color: "text-amber-500",
-    bgIcon: "bg-amber-500/10",
-  },
-  {
-    label: "AVAILABLE TODAY",
-    value: "12",
-    trend: "+ 3 vs yesterday",
-    icon: UserCheck,
-    color: "text-[#d4af37]",
-    bgIcon: "bg-[#d4af37]/10",
-  },
-  {
-    label: "UTILIZATION (WTD)",
-    value: "87%",
-    trend: "+ 8% vs last week",
-    icon: TrendingUp,
-    color: "text-amber-500",
-    bgIcon: "bg-amber-500/10",
-  },
-  {
-    label: "AVG RATING",
-    value: "4.8",
-    trend: "+ 0.2 vs last week",
-    icon: Star,
-    color: "text-[#d4af37]",
-    bgIcon: "bg-[#d4af37]/10",
-  },
-];
 
 // ── Status chip config ──────────────────────────────────────────────────
 
@@ -376,12 +56,13 @@ const skillIconMap: Record<string, React.ElementType> = {
   "Client Relations": Handshake,
   "Problem Solving": Puzzle,
   "Strategic Planning": TrendingUp,
-  "Data Analysis": BarChartIcon,
+  "Data Analysis": Eye,
   Presentation: Eye,
   "Technical Assessment": Briefcase,
   Implementation: Pencil,
   "Quality Assurance": Star,
   "Customer Support": MessageSquare,
+  Support: MessageSquare,
   Scheduling: Calendar,
   Documentation: Pencil,
   "Event Planning": Calendar,
@@ -394,67 +75,303 @@ const skillIconMap: Record<string, React.ElementType> = {
   "Risk Assessment": Star,
   Compliance: Briefcase,
   "Client Onboarding": Users,
+  Onboarding: Users,
   "Admin Support": MessageSquare,
+  Admin: MessageSquare,
   "Data Entry": Pencil,
+  Strategy: TrendingUp,
+  Leadership: Users,
+  "Project Management": Briefcase,
+  Consulting: Zap,
+  Finance: TrendingUp,
+  Analysis: Eye,
+  "Portfolio Review": Briefcase,
+  "Quick Sync": Zap,
 };
 
-function BarChartIcon(props: { className?: string }) {
+// ── Helpers ──────────────────────────────────────────────────────────────
+
+function compactTime(t: string): string {
+  const match = t.match(/^(\d+):/);
+  return match ? match[1] : t;
+}
+
+// ── Filter Dropdown ─────────────────────────────────────────────────────
+
+function FilterDropdown({
+  label,
+  options,
+  value,
+  onChange,
+}: {
+  label: string;
+  options: string[];
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
   return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={props.className}
-    >
-      <line x1="12" y1="20" x2="12" y2="10" />
-      <line x1="18" y1="20" x2="18" y2="4" />
-      <line x1="6" y1="20" x2="6" y2="16" />
-    </svg>
+    <div className="relative">
+      <button
+        onBlur={() => setTimeout(() => setOpen(false), 150)}
+        onClick={() => setOpen(!open)}
+        className="flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-medium text-[#888] bg-[#161616] border border-[#d4af37]/8 hover:border-[#d4af37]/20 hover:text-[#b0b0b0] transition-all duration-200 cursor-pointer"
+      >
+        {value}
+        <ChevronDown
+          className={cn(
+            "w-3 h-3 transition-transform duration-200",
+            open && "rotate-180"
+          )}
+        />
+      </button>
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: -4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.15 }}
+            className="absolute top-full left-0 mt-1 z-50 min-w-[180px] premium-panel rounded-lg overflow-hidden shadow-xl border border-[#d4af37]/10"
+          >
+            {options.map((opt) => (
+              <button
+                key={opt}
+                onMouseDown={() => {
+                  onChange(opt);
+                  setOpen(false);
+                }}
+                className={cn(
+                  "w-full text-left px-3.5 py-2 text-xs transition-all duration-150 cursor-pointer",
+                  value === opt
+                    ? "text-[#d4af37] bg-[#d4af37]/5"
+                    : "text-[#888] hover:text-[#b0b0b0] hover:bg-[#161616]"
+                )}
+              >
+                {opt}
+              </button>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   );
 }
+
+// ── Animation variants ──────────────────────────────────────────────────
+
+const container = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: { staggerChildren: 0.04 },
+  },
+};
+const item = {
+  hidden: { opacity: 0, y: 8 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.3 } },
+};
 
 // ── Component ────────────────────────────────────────────────────────────
 
 export function StaffPage() {
-  const [selectedStaff, setSelectedStaff] = useState<StaffMember | null>(null);
+  const { staff, appointments, services } = useBookingStore();
+
+  const [selectedStaffId, setSelectedStaffId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [roleFilter, setRoleFilter] = useState("All Roles");
+  const [statusFilter, setStatusFilter] = useState("All Statuses");
   const [currentPage, setCurrentPage] = useState(1);
   const perPage = 8;
 
-  const filtered = staffMembers.filter(
-    (s) =>
-      s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      s.role.toLowerCase().includes(searchQuery.toLowerCase())
+  // ── Derive per-staff computed data ───────────────────────────────────
+
+  const staffDerived = useMemo(() => {
+    const now = new Date();
+    const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    const todayName = dayNames[now.getDay()];
+    const activeApptStatuses = new Set(["confirmed", "pending", "arrived"]);
+
+    return staff.map((s) => {
+      // Upcoming bookings: non-terminal statuses
+      const staffAppts = appointments.filter(
+        (a) => a.staffId === s.id && activeApptStatuses.has(a.status)
+      );
+
+      // Sort by date+startTime to find next booking
+      const sorted = [...staffAppts].sort((a, b) => {
+        const aTime = new Date(`${a.date}T${a.startTime}`).getTime();
+        const bTime = new Date(`${b.date}T${b.startTime}`).getTime();
+        return aTime - bTime;
+      });
+
+      const upcomingBookings = staffAppts.length;
+      const nextBookingTime =
+        sorted.length > 0 ? formatTime12(sorted[0].startTime) : "—";
+
+      // Available today from weeklyHours
+      const todayEntry = s.weeklyHours.find((w) => w.day === todayName);
+      let availableToday: string;
+      if (s.status === "On Leave") {
+        availableToday = "On Leave";
+      } else if (s.status === "Day Off") {
+        availableToday = "Day Off";
+      } else if (todayEntry?.active) {
+        availableToday = `${todayEntry.start} – ${todayEntry.end}`;
+      } else {
+        availableToday = "Day Off";
+      }
+
+      // Assigned services from services array
+      const assignedServices = services
+        .filter((svc) => svc.staffIds.includes(s.id))
+        .map((svc) => ({ name: svc.name, price: formatCurrency(svc.price) }));
+
+      // Weekly hours with display-ready format
+      const weeklyDisplay = s.weeklyHours.map((w) => ({
+        day: w.day.toUpperCase(),
+        hours: w.active
+          ? `${compactTime(w.start)}–${compactTime(w.end)}`
+          : "—",
+        active: w.active,
+      }));
+
+      return {
+        ...s,
+        upcomingBookings,
+        nextBookingTime,
+        availableToday,
+        assignedServices,
+        weeklyDisplay,
+      };
+    });
+  }, [staff, appointments, services]);
+
+  // ── Stat cards computed from real data ───────────────────────────────
+
+  const stats = useMemo(() => {
+    const activeCount = staff.filter((s) => s.status === "Active").length;
+    const avgRating =
+      staff.length > 0
+        ? (staff.reduce((sum, s) => sum + s.rating, 0) / staff.length).toFixed(1)
+        : "0.0";
+    const totalRevenue = staff.reduce((sum, s) => sum + s.revenueMTD, 0);
+    const totalUpcoming = staffDerived.reduce(
+      (sum, s) => sum + s.upcomingBookings,
+      0
+    );
+    const totalReviews = staff.reduce((sum, s) => sum + s.reviewCount, 0);
+    const uniqueRoles = new Set(staff.map((s) => s.role)).size;
+
+    return [
+      {
+        label: "TEAM MEMBERS",
+        value: String(staff.length),
+        trend: `${uniqueRoles} roles`,
+        icon: Users,
+        color: "text-amber-500",
+        bgIcon: "bg-amber-500/10",
+      },
+      {
+        label: "AVAILABLE TODAY",
+        value: String(activeCount),
+        trend: `of ${staff.length} total`,
+        icon: UserCheck,
+        color: "text-[#d4af37]",
+        bgIcon: "bg-[#d4af37]/10",
+      },
+      {
+        label: "REVENUE (MTD)",
+        value: formatCurrency(totalRevenue),
+        trend: `${totalUpcoming} upcoming bookings`,
+        icon: TrendingUp,
+        color: "text-amber-500",
+        bgIcon: "bg-amber-500/10",
+      },
+      {
+        label: "AVG RATING",
+        value: avgRating,
+        trend: `${totalReviews} total reviews`,
+        icon: Star,
+        color: "text-[#d4af37]",
+        bgIcon: "bg-[#d4af37]/10",
+      },
+    ];
+  }, [staff, staffDerived]);
+
+  // ── Filter options ───────────────────────────────────────────────────
+
+  const uniqueRoles = useMemo(
+    () => ["All Roles", ...new Set(staff.map((s) => s.role))],
+    [staff]
+  );
+  const uniqueStatuses = useMemo(
+    () => ["All Statuses", ...new Set(staff.map((s) => s.status))],
+    [staff]
   );
 
-  const totalPages = Math.ceil(filtered.length / perPage);
-  const paginated = filtered.slice((currentPage - 1) * perPage, currentPage * perPage);
+  // ── Filtered list ────────────────────────────────────────────────────
 
-  const container = {
-    hidden: { opacity: 0 },
-    show: {
-      opacity: 1,
-      transition: { staggerChildren: 0.04 },
-    },
+  const filtered = useMemo(() => {
+    return staffDerived.filter((s) => {
+      const q = searchQuery.toLowerCase();
+      const matchesSearch =
+        q === "" ||
+        s.name.toLowerCase().includes(q) ||
+        s.role.toLowerCase().includes(q) ||
+        s.skills.some((sk) => sk.toLowerCase().includes(q));
+      const matchesRole = roleFilter === "All Roles" || s.role === roleFilter;
+      const matchesStatus =
+        statusFilter === "All Statuses" || s.status === statusFilter;
+      return matchesSearch && matchesRole && matchesStatus;
+    });
+  }, [staffDerived, searchQuery, roleFilter, statusFilter]);
+
+  // ── Pagination ───────────────────────────────────────────────────────
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / perPage));
+  const paginated = filtered.slice(
+    (currentPage - 1) * perPage,
+    currentPage * perPage
+  );
+
+  // ── Selected staff detail data ───────────────────────────────────────
+
+  const selectedStaff = useMemo(
+    () =>
+      selectedStaffId
+        ? staffDerived.find((s) => s.id === selectedStaffId) ?? null
+        : null,
+    [selectedStaffId, staffDerived]
+  );
+
+  // Reset page when filters change
+  const handleSearchChange = (v: string) => {
+    setSearchQuery(v);
+    setCurrentPage(1);
   };
-  const item = {
-    hidden: { opacity: 0, y: 8 },
-    show: { opacity: 1, y: 0, transition: { duration: 0.3 } },
+  const handleRoleChange = (v: string) => {
+    setRoleFilter(v);
+    setCurrentPage(1);
   };
+  const handleStatusChange = (v: string) => {
+    setStatusFilter(v);
+    setCurrentPage(1);
+  };
+
+  // ── Render ───────────────────────────────────────────────────────────
 
   return (
     <div className="p-6 space-y-5">
       {/* Header */}
       <div className="flex items-end justify-between">
         <div>
-          <h1 className="text-xl font-bold text-[#e0e0e0] tracking-wide">Staff</h1>
-          <p className="text-sm text-[#777] mt-0.5">Manage your team members, roles, and schedules.</p>
+          <h1 className="text-xl font-bold text-[#e0e0e0] tracking-wide">
+            Staff
+          </h1>
+          <p className="text-sm text-[#777] mt-0.5">
+            Manage your team members, roles, and schedules.
+          </p>
         </div>
         <PremiumButton variant="primary" size="sm">
           <UserPlus className="w-3.5 h-3.5" />
@@ -480,9 +397,16 @@ export function StaffPage() {
                 <p className="text-[10px] font-semibold tracking-[0.15em] text-[#666] uppercase">
                   {stat.label}
                 </p>
-                <p className="text-2xl font-bold text-[#e0e0e0] mt-1.5">{stat.value}</p>
+                <p className="text-2xl font-bold text-[#e0e0e0] mt-1.5">
+                  {stat.value}
+                </p>
               </div>
-              <div className={cn("w-9 h-9 rounded-lg flex items-center justify-center", stat.bgIcon)}>
+              <div
+                className={cn(
+                  "w-9 h-9 rounded-lg flex items-center justify-center",
+                  stat.bgIcon
+                )}
+              >
                 <stat.icon className={cn("w-4.5 h-4.5", stat.color)} />
               </div>
             </div>
@@ -503,23 +427,25 @@ export function StaffPage() {
               type="text"
               placeholder="Search staff by name, role, or skill..."
               value={searchQuery}
-              onChange={(e) => {
-                setSearchQuery(e.target.value);
-                setCurrentPage(1);
-              }}
+              onChange={(e) => handleSearchChange(e.target.value)}
               className="premium-input w-full pl-9 pr-4 py-2 rounded-lg text-sm text-[#e0e0e0] placeholder:text-[#555] outline-none"
             />
           </div>
-          {["All Roles", "All Statuses", "All Locations"].map((filter) => (
-            <button
-              key={filter}
-              className="flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-medium text-[#888] bg-[#161616] border border-[#d4af37]/8 hover:border-[#d4af37]/20 hover:text-[#b0b0b0] transition-all duration-200 cursor-pointer"
-            >
-              {filter}
-              <ChevronDown className="w-3 h-3" />
-            </button>
-          ))}
-          <button className="p-2 rounded-lg text-[#888] bg-[#161616] border border-[#d4af37]/8 hover:border-[#d4af37]/20 hover:text-[#d4af37] transition-all duration-200 cursor-pointer">
+          <FilterDropdown
+            label="Role"
+            options={uniqueRoles}
+            value={roleFilter}
+            onChange={handleRoleChange}
+          />
+          <FilterDropdown
+            label="Status"
+            options={uniqueStatuses}
+            value={statusFilter}
+            onChange={handleStatusChange}
+          />
+          <button
+            className="p-2 rounded-lg text-[#888] bg-[#161616] border border-[#d4af37]/8 hover:border-[#d4af37]/20 hover:text-[#d4af37] transition-all duration-200 cursor-pointer"
+          >
             <Filter className="w-4 h-4" />
           </button>
         </div>
@@ -558,14 +484,14 @@ export function StaffPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {paginated.map((member, i) => {
-                    const isSelected = selectedStaff?.id === member.id;
+                  {paginated.map((member) => {
+                    const isSelected = selectedStaffId === member.id;
                     const statusConf = staffStatusConfig[member.status];
                     return (
                       <motion.tr
                         key={member.id}
                         variants={item}
-                        onClick={() => setSelectedStaff(member)}
+                        onClick={() => setSelectedStaffId(member.id)}
                         className={cn(
                           "border-b border-[#d4af37]/5 last:border-0 cursor-pointer transition-all duration-200",
                           isSelected
@@ -583,10 +509,16 @@ export function StaffPage() {
                             </span>
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-xs text-[#888] whitespace-nowrap">{member.role}</td>
                         <td className="px-4 py-3 text-xs text-[#888] whitespace-nowrap">
-                          {member.status === "On Leave" ? (
-                            <span className="text-orange-400/80 italic">Day Off</span>
+                          {member.role}
+                        </td>
+                        <td className="px-4 py-3 text-xs text-[#888] whitespace-nowrap">
+                          {member.status === "On Leave" ||
+                          member.status === "Day Off" ||
+                          member.availableToday === "Day Off" ? (
+                            <span className="text-orange-400/80 italic">
+                              Day Off
+                            </span>
                           ) : (
                             <span className="flex items-center gap-1.5">
                               <Clock className="w-3 h-3 text-[#555]" />
@@ -595,7 +527,9 @@ export function StaffPage() {
                           )}
                         </td>
                         <td className="px-4 py-3 whitespace-nowrap">
-                          <div className="text-xs text-[#e0e0e0] font-medium">{member.upcomingBookings}</div>
+                          <div className="text-xs text-[#e0e0e0] font-medium">
+                            {member.upcomingBookings}
+                          </div>
                           {member.nextBookingTime !== "—" && (
                             <div className="text-[10px] text-[#666]">
                               Next: {member.nextBookingTime}
@@ -606,12 +540,18 @@ export function StaffPage() {
                           <span className="text-xs text-[#e0e0e0] font-medium flex items-center gap-1">
                             {member.rating}
                             <Star className="w-3 h-3 text-[#d4af37] fill-[#d4af37]" />
-                            <span className="text-[#666] font-normal">({member.reviewCount})</span>
+                            <span className="text-[#666] font-normal">
+                              ({member.reviewCount})
+                            </span>
                           </span>
                         </td>
                         <td className="px-4 py-3 whitespace-nowrap">
-                          <div className="text-xs text-[#e0e0e0] font-medium">{member.revenueMTD}</div>
-                          <div className="text-[10px] text-[#666]">{member.hoursWorked}</div>
+                          <div className="text-xs text-[#e0e0e0] font-medium">
+                            {formatCurrency(member.revenueMTD)}
+                          </div>
+                          <div className="text-[10px] text-[#666]">
+                            {member.hoursWorked}
+                          </div>
                         </td>
                         <td className="px-4 py-3">
                           <span
@@ -620,7 +560,12 @@ export function StaffPage() {
                               statusConf.chipClass
                             )}
                           >
-                            <span className={cn("w-1.5 h-1.5 rounded-full", statusConf.dotClass)} />
+                            <span
+                              className={cn(
+                                "w-1.5 h-1.5 rounded-full",
+                                statusConf.dotClass
+                              )}
+                            />
                             {member.status}
                           </span>
                         </td>
@@ -634,18 +579,27 @@ export function StaffPage() {
             {/* Pagination */}
             <div className="flex items-center justify-between px-4 py-3 border-t border-[#d4af37]/8">
               <p className="text-xs text-[#555]">
-                Showing {(currentPage - 1) * perPage + 1} to{" "}
-                {Math.min(currentPage * perPage, filtered.length)} of {filtered.length} staff members
+                Showing{" "}
+                {filtered.length === 0
+                  ? 0
+                  : (currentPage - 1) * perPage + 1}{" "}
+                to {Math.min(currentPage * perPage, filtered.length)} of{" "}
+                {filtered.length} staff members
               </p>
               <div className="flex items-center gap-1">
                 <button
-                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  onClick={() =>
+                    setCurrentPage((p) => Math.max(1, p - 1))
+                  }
                   disabled={currentPage === 1}
                   className="p-1.5 rounded-md text-[#555] hover:text-[#d4af37] hover:bg-[#161616] transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
                 >
                   <ChevronLeft className="w-4 h-4" />
                 </button>
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                {Array.from(
+                  { length: totalPages },
+                  (_, i) => i + 1
+                ).map((p) => (
                   <button
                     key={p}
                     onClick={() => setCurrentPage(p)}
@@ -660,7 +614,9 @@ export function StaffPage() {
                   </button>
                 ))}
                 <button
-                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  onClick={() =>
+                    setCurrentPage((p) => Math.min(totalPages, p + 1))
+                  }
                   disabled={currentPage === totalPages}
                   className="p-1.5 rounded-md text-[#555] hover:text-[#d4af37] hover:bg-[#161616] transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
                 >
@@ -678,7 +634,10 @@ export function StaffPage() {
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 20 }}
-              transition={{ duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
+              transition={{
+                duration: 0.3,
+                ease: [0.25, 0.46, 0.45, 0.94],
+              }}
               className="w-[340px] flex-shrink-0 space-y-4 overflow-y-auto max-h-[calc(100vh-220px)]"
             >
               {/* Header Card */}
@@ -689,12 +648,16 @@ export function StaffPage() {
                       {selectedStaff.initials}
                     </div>
                     <div>
-                      <h3 className="text-base font-bold text-[#e0e0e0]">{selectedStaff.name}</h3>
-                      <p className="text-xs text-[#888]">{selectedStaff.role}</p>
+                      <h3 className="text-base font-bold text-[#e0e0e0]">
+                        {selectedStaff.name}
+                      </h3>
+                      <p className="text-xs text-[#888]">
+                        {selectedStaff.role}
+                      </p>
                     </div>
                   </div>
                   <button
-                    onClick={() => setSelectedStaff(null)}
+                    onClick={() => setSelectedStaffId(null)}
                     className="p-1 rounded-md text-[#555] hover:text-[#e0e0e0] hover:bg-[#1e1e1e] transition-all duration-200 cursor-pointer"
                   >
                     <X className="w-4 h-4" />
@@ -704,7 +667,8 @@ export function StaffPage() {
                 <div className="flex items-center gap-2 mb-4">
                   <span className="text-xs text-[#d4af37] flex items-center gap-1">
                     <Star className="w-3.5 h-3.5 fill-[#d4af37]" />
-                    {selectedStaff.rating} ({selectedStaff.reviewCount} reviews)
+                    {selectedStaff.rating} ({selectedStaff.reviewCount}{" "}
+                    reviews)
                   </span>
                   <span
                     className={cn(
@@ -713,7 +677,10 @@ export function StaffPage() {
                     )}
                   >
                     <span
-                      className={cn("w-1.5 h-1.5 rounded-full", staffStatusConfig[selectedStaff.status].dotClass)}
+                      className={cn(
+                        "w-1.5 h-1.5 rounded-full",
+                        staffStatusConfig[selectedStaff.status].dotClass
+                      )}
                     />
                     {selectedStaff.status}
                   </span>
@@ -726,7 +693,12 @@ export function StaffPage() {
                     { icon: MessageSquare, label: "Message" },
                     { icon: UserPlus, label: "Assign" },
                   ].map((btn) => (
-                    <PremiumButton key={btn.label} variant="ghost" size="sm" className="flex-col gap-1 py-2.5 text-[10px]">
+                    <PremiumButton
+                      key={btn.label}
+                      variant="ghost"
+                      size="sm"
+                      className="flex-col gap-1 py-2.5 text-[10px]"
+                    >
                       <btn.icon className="w-3.5 h-3.5" />
                       {btn.label}
                     </PremiumButton>
@@ -740,13 +712,17 @@ export function StaffPage() {
                   <p className="text-[10px] font-semibold tracking-[0.15em] text-[#666] uppercase">
                     Weekly Schedule
                   </p>
-                  <PremiumButton variant="ghost" size="sm" className="text-[10px]">
+                  <PremiumButton
+                    variant="ghost"
+                    size="sm"
+                    className="text-[10px]"
+                  >
                     <Pencil className="w-3 h-3" />
                     Edit
                   </PremiumButton>
                 </div>
                 <div className="grid grid-cols-7 gap-1.5">
-                  {selectedStaff.weeklyHours.map((day) => (
+                  {selectedStaff.weeklyDisplay.map((day) => (
                     <div
                       key={day.day}
                       className={cn(
@@ -756,8 +732,15 @@ export function StaffPage() {
                           : "bg-[#0e0e0e] border border-transparent opacity-40"
                       )}
                     >
-                      <p className="text-[9px] font-semibold text-[#666] uppercase">{day.day}</p>
-                      <p className={cn("text-[10px] font-medium mt-0.5", day.active ? "text-[#d4af37]" : "text-[#555]")}>
+                      <p className="text-[9px] font-semibold text-[#666] uppercase">
+                        {day.day}
+                      </p>
+                      <p
+                        className={cn(
+                          "text-[10px] font-medium mt-0.5",
+                          day.active ? "text-[#d4af37]" : "text-[#555]"
+                        )}
+                      >
                         {day.hours}
                       </p>
                     </div>
@@ -766,7 +749,12 @@ export function StaffPage() {
                 <div className="flex items-center justify-between mt-3">
                   <p className="text-[10px] text-[#666]">
                     {selectedStaff.upcomingBookings} bookings &middot;{" "}
-                    {selectedStaff.upcomingBookings > 5 ? "87" : selectedStaff.upcomingBookings > 3 ? "72" : "45"}% booked
+                    {selectedStaff.upcomingBookings > 5
+                      ? "87"
+                      : selectedStaff.upcomingBookings > 3
+                        ? "72"
+                        : "45"}
+                    % booked
                   </p>
                   <button className="text-[10px] text-[#d4af37] hover:text-[#ebd08f] transition-colors duration-200 cursor-pointer flex items-center gap-0.5">
                     View Full Schedule
@@ -781,7 +769,11 @@ export function StaffPage() {
                   <p className="text-[10px] font-semibold tracking-[0.15em] text-[#666] uppercase">
                     Skills
                   </p>
-                  <PremiumButton variant="ghost" size="sm" className="text-[10px]">
+                  <PremiumButton
+                    variant="ghost"
+                    size="sm"
+                    className="text-[10px]"
+                  >
                     <Pencil className="w-3 h-3" />
                     Edit
                   </PremiumButton>
@@ -808,7 +800,11 @@ export function StaffPage() {
                   <p className="text-[10px] font-semibold tracking-[0.15em] text-[#666] uppercase">
                     Assigned Services
                   </p>
-                  <PremiumButton variant="ghost" size="sm" className="text-[10px]">
+                  <PremiumButton
+                    variant="ghost"
+                    size="sm"
+                    className="text-[10px]"
+                  >
                     Manage
                   </PremiumButton>
                 </div>
@@ -818,8 +814,12 @@ export function StaffPage() {
                       key={service.name}
                       className="flex items-center justify-between px-3 py-2 rounded-lg bg-[#0e0e0e]/60 border border-[#d4af37]/5"
                     >
-                      <span className="text-xs text-[#b0b0b0]">{service.name}</span>
-                      <span className="text-xs font-medium text-[#d4af37]">{service.price}</span>
+                      <span className="text-xs text-[#b0b0b0]">
+                        {service.name}
+                      </span>
+                      <span className="text-xs font-medium text-[#d4af37]">
+                        {service.price}
+                      </span>
                     </div>
                   ))}
                 </div>
@@ -831,7 +831,11 @@ export function StaffPage() {
                   <p className="text-[10px] font-semibold tracking-[0.15em] text-[#666] uppercase">
                     Contact Information
                   </p>
-                  <PremiumButton variant="ghost" size="sm" className="text-[10px]">
+                  <PremiumButton
+                    variant="ghost"
+                    size="sm"
+                    className="text-[10px]"
+                  >
                     <Pencil className="w-3 h-3" />
                     Edit
                   </PremiumButton>
@@ -839,26 +843,40 @@ export function StaffPage() {
                 <div className="space-y-2.5">
                   <div className="flex items-center gap-2.5">
                     <Mail className="w-3.5 h-3.5 text-[#555]" />
-                    <span className="text-xs text-[#b0b0b0]">{selectedStaff.email}</span>
+                    <span className="text-xs text-[#b0b0b0]">
+                      {selectedStaff.email}
+                    </span>
                   </div>
                   <div className="flex items-center gap-2.5">
                     <Phone className="w-3.5 h-3.5 text-[#555]" />
-                    <span className="text-xs text-[#b0b0b0]">{selectedStaff.phone}</span>
+                    <span className="text-xs text-[#b0b0b0]">
+                      {selectedStaff.phone}
+                    </span>
                   </div>
                   <div className="flex items-center gap-2.5">
                     <MapPin className="w-3.5 h-3.5 text-[#555]" />
-                    <span className="text-xs text-[#b0b0b0]">{selectedStaff.location}</span>
+                    <span className="text-xs text-[#b0b0b0]">
+                      {selectedStaff.location}
+                    </span>
                   </div>
                 </div>
               </div>
 
               {/* Bottom Actions */}
               <div className="flex gap-2">
-                <PremiumButton variant="primary" size="sm" className="flex-1">
+                <PremiumButton
+                  variant="primary"
+                  size="sm"
+                  className="flex-1"
+                >
                   <UserPlus className="w-3.5 h-3.5" />
                   Assign Booking
                 </PremiumButton>
-                <PremiumButton variant="secondary" size="sm" className="flex-1">
+                <PremiumButton
+                  variant="secondary"
+                  size="sm"
+                  className="flex-1"
+                >
                   <Eye className="w-3.5 h-3.5" />
                   View Profile
                 </PremiumButton>

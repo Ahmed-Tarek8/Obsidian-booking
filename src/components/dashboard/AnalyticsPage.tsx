@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import { motion } from "framer-motion";
 import {
   DollarSign,
@@ -30,8 +31,9 @@ import { StatCard } from "./StatCard";
 import { PremiumButton } from "./PremiumButton";
 import { SectionPanel } from "./SectionPanel";
 import { cn } from "@/lib/utils";
+import { useBookingStore, formatCurrency } from "@/lib/store";
 
-/* ─── Data ─────────────────────────────────────────────────────────────── */
+/* ─── Historical data (kept — not enough appointment data to generate real charts) ── */
 
 const bookingVsCancelData = [
   { day: "May 6", bookings: 42, cancellations: 1, noShows: 2 },
@@ -53,26 +55,6 @@ const bookingsByDayData = [
   { day: "May 12", bookings: 39 },
 ];
 
-const serviceMixData = [
-  { name: "Consultation", value: 28 },
-  { name: "Strategy Session", value: 21 },
-  { name: "Premium Meeting Room", value: 16 },
-  { name: "Virtual Session", value: 14 },
-  { name: "On-site Visit", value: 10 },
-  { name: "Other", value: 11 },
-];
-
-const SERVICE_COLORS = ["#d4af37", "#8B5CF6", "#3B82F6", "#22C55E", "#F97316", "#555"];
-
-const topServicesData = [
-  { service: "Strategy Session", bookings: 72, revenue: "$10,800", rating: 4.8, trend: "+12%" },
-  { service: "Consultation", bookings: 96, revenue: "$6,720", rating: 4.7, trend: "+8%" },
-  { service: "Premium Meeting Room", bookings: 55, revenue: "$8,250", rating: 4.9, trend: "+15%" },
-  { service: "Virtual Session", bookings: 48, revenue: "$2,880", rating: 4.5, trend: "+22%" },
-  { service: "On-site Visit", bookings: 34, revenue: "$3,400", rating: 4.6, trend: "-3%" },
-  { service: "Quick Sync", bookings: 37, revenue: "$1,850", rating: 4.4, trend: "+5%" },
-];
-
 const peakHoursData = [
   { slot: "8-10 AM", mon: 5, tue: 8, wed: 6, thu: 12, fri: 9, sat: 3, sun: 1 },
   { slot: "10-12 PM", mon: 8, tue: 10, wed: 9, thu: 14, fri: 11, sat: 5, sun: 2 },
@@ -84,6 +66,19 @@ const peakHoursData = [
 
 const dayKeys = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const;
 const dayLabels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+const SERVICE_COLORS = [
+  "#d4af37",
+  "#8B5CF6",
+  "#3B82F6",
+  "#22C55E",
+  "#F97316",
+  "#555",
+  "#EC4899",
+  "#06B6D4",
+  "#A855F7",
+  "#EF4444",
+];
 
 /* ─── Recharts tooltip style (shared) ──────────────────────────────────── */
 
@@ -99,35 +94,16 @@ const tooltipLabelStyle: React.CSSProperties = {
   color: "#888",
 };
 
-/* ─── Custom Pie label for center text ─────────────────────────────────── */
-
-function PieCenterLabel() {
-  return (
-    <div
-      style={{
-        position: "absolute",
-        top: "50%",
-        left: "50%",
-        transform: "translate(-50%, -50%)",
-        textAlign: "center",
-        pointerEvents: "none",
-      }}
-    >
-      <div className="text-xl font-bold text-[#e0e0e0]">342</div>
-      <div className="text-[10px] text-[#666] uppercase tracking-wider">Bookings</div>
-    </div>
-  );
-}
-
 /* ─── Trend badge ──────────────────────────────────────────────────────── */
 
 function TrendBadge({ value }: { value: string }) {
   const isUp = value.startsWith("+");
+  const isNeutral = value === "—" || value === "0%" || value === "+0%";
   return (
     <span
       className={cn(
         "text-[11px] font-medium",
-        isUp ? "text-emerald-400" : "text-red-400"
+        isNeutral ? "text-[#555]" : isUp ? "text-emerald-400" : "text-red-400"
       )}
     >
       {value}
@@ -141,7 +117,7 @@ function StarRating({ rating }: { rating: number }) {
   return (
     <div className="flex items-center gap-0.5">
       <Star className="w-3 h-3 text-[#d4af37] fill-[#d4af37]" />
-      <span className="text-[13px] text-[#ccc] ml-0.5">{rating}</span>
+      <span className="text-[13px] text-[#ccc] ml-0.5">{rating.toFixed(1)}</span>
     </div>
   );
 }
@@ -173,6 +149,116 @@ function SectionTitle({
 /* ─── Main Component ───────────────────────────────────────────────────── */
 
 export function AnalyticsPage() {
+  const { appointments, services, clients, staff } = useBookingStore();
+
+  /* ── Derived metrics ──────────────────────────────────────────────────── */
+
+  const stats = useMemo(() => {
+    const nonCancelled = appointments.filter(
+      (a) => a.status !== "cancelled"
+    );
+    const cancelled = appointments.filter(
+      (a) => a.status === "cancelled"
+    );
+
+    // Revenue: sum of service price for every non-cancelled appointment
+    const totalRevenue = nonCancelled.reduce((sum, a) => {
+      const svc = services.find((s) => s.id === a.serviceId);
+      return sum + (svc?.price ?? 0);
+    }, 0);
+
+    const totalBookings = nonCancelled.length;
+    const avgBookingValue =
+      totalBookings > 0 ? totalRevenue / totalBookings : 0;
+
+    // Utilization: hardcoded — we only have 2 days of appointment data
+    const utilization = 68;
+
+    // Client return rate: clients with totalBookings > 1 / total clients
+    const returningClients = clients.filter((c) => c.totalBookings > 1).length;
+    const clientReturnRate =
+      clients.length > 0
+        ? Math.round((returningClients / clients.length) * 100)
+        : 0;
+
+    // Cancellation rate
+    const cancellationRate =
+      appointments.length > 0
+        ? ((cancelled.length / appointments.length) * 100).toFixed(1)
+        : "0.0";
+
+    return {
+      totalRevenue,
+      totalBookings,
+      avgBookingValue,
+      utilization,
+      clientReturnRate,
+      cancellationRate,
+    };
+  }, [appointments, services, clients]);
+
+  /* ── Service Mix (donut) from services[].bookings ─────────────────────── */
+
+  const { serviceMixData, totalServiceBookings } = useMemo(() => {
+    const sorted = [...services].sort((a, b) => b.bookings - a.bookings);
+    const total = sorted.reduce((s, svc) => s + svc.bookings, 0);
+    // Top 8, merge the rest into "Other"
+    const top = sorted.slice(0, 8);
+    const rest = sorted.slice(8);
+    const otherBookings = rest.reduce((s, svc) => s + svc.bookings, 0);
+
+    const data = top.map((svc) => ({
+      name: svc.name,
+      value:
+        total > 0 ? Math.round((svc.bookings / total) * 1000) / 10 : 0,
+      raw: svc.bookings,
+    }));
+
+    if (otherBookings > 0) {
+      data.push({
+        name: "Other",
+        value:
+          total > 0
+            ? Math.round((otherBookings / total) * 1000) / 10
+            : 0,
+        raw: otherBookings,
+      });
+    }
+
+    return { serviceMixData: data, totalServiceBookings: total };
+  }, [services]);
+
+  /* ── Top Services table from services[] ───────────────────────────────── */
+
+  const topServicesRows = useMemo(() => {
+    // For each service, compute revenue = price * bookings and avg staff rating
+    const rows = services.map((svc) => {
+      const revenue = svc.price * svc.bookings;
+      // Average rating of staff assigned to this service
+      const assignedStaff = staff.filter((s) =>
+        svc.staffIds.includes(s.id)
+      );
+      const avgRating =
+        assignedStaff.length > 0
+          ? assignedStaff.reduce((sum, s) => sum + s.rating, 0) /
+            assignedStaff.length
+          : 0;
+
+      return {
+        service: svc.name,
+        bookings: svc.bookings,
+        revenue,
+        avgRating,
+      };
+    });
+
+    // Sort by revenue descending
+    rows.sort((a, b) => b.revenue - a.revenue);
+    return rows;
+  }, [services, staff]);
+
+  /* ── Render ───────────────────────────────────────────────────────────── */
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -209,48 +295,48 @@ export function AnalyticsPage() {
       <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3">
         <StatCard
           title="Total Revenue"
-          value="$24,830"
-          change="+18.6% vs prev week"
+          value={formatCurrency(stats.totalRevenue)}
+          change="From store data"
           changeType="up"
           icon={DollarSign}
           delay={0}
         />
         <StatCard
           title="Total Bookings"
-          value="342"
-          change="+14.2% vs prev week"
+          value={String(stats.totalBookings)}
+          change="Non-cancelled"
           changeType="up"
           icon={CalendarCheck}
           delay={0.06}
         />
         <StatCard
           title="Avg Booking Value"
-          value="$72.61"
-          change="+3.8% vs prev week"
+          value={formatCurrency(Math.round(stats.avgBookingValue))}
+          change="Revenue / Bookings"
           changeType="up"
           icon={TrendingUp}
           delay={0.12}
         />
         <StatCard
           title="Utilization"
-          value="68%"
-          change="+5.5pp vs prev week"
+          value={`${stats.utilization}%`}
+          change="Hardcoded (2 days)"
           changeType="up"
           icon={Activity}
           delay={0.18}
         />
         <StatCard
           title="Client Return Rate"
-          value="41%"
-          change="+5.1pp vs prev week"
+          value={`${stats.clientReturnRate}%`}
+          change="Clients w/ >1 booking"
           changeType="up"
           icon={Repeat}
           delay={0.24}
         />
         <StatCard
           title="Cancellation Rate"
-          value="3.2%"
-          change="+0.0pp vs prev week"
+          value={`${stats.cancellationRate}%`}
+          change="Cancelled / Total"
           changeType="neutral"
           icon={XCircle}
           delay={0.3}
@@ -369,7 +455,9 @@ export function AnalyticsPage() {
             {/* Center overlay label */}
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none" style={{ paddingTop: '0px' }}>
               <div className="text-center">
-                <div className="text-xl font-bold text-[#e0e0e0]">342</div>
+                <div className="text-xl font-bold text-[#e0e0e0]">
+                  {totalServiceBookings}
+                </div>
                 <div className="text-[10px] text-[#666] uppercase tracking-wider">
                   Bookings
                 </div>
@@ -382,7 +470,7 @@ export function AnalyticsPage() {
               <div key={item.name} className="flex items-center gap-2">
                 <div
                   className="w-2 h-2 rounded-full flex-shrink-0"
-                  style={{ backgroundColor: SERVICE_COLORS[i] }}
+                  style={{ backgroundColor: SERVICE_COLORS[i % SERVICE_COLORS.length] }}
                 />
                 <span className="text-[11px] text-[#888] truncate">
                   {item.name}
@@ -399,9 +487,9 @@ export function AnalyticsPage() {
         {/* Top Services */}
         <SectionPanel className="lg:col-span-3">
           <SectionTitle title="Top Services" />
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto max-h-96 overflow-y-auto">
             <table className="w-full">
-              <thead>
+              <thead className="sticky top-0 bg-[#111] z-10">
                 <tr className="border-b border-[#d4af37]/10">
                   <th className="text-left text-[10px] font-bold text-[#555] uppercase tracking-widest pb-3 pr-4">
                     Service
@@ -421,12 +509,12 @@ export function AnalyticsPage() {
                 </tr>
               </thead>
               <tbody>
-                {topServicesData.map((row, i) => (
+                {topServicesRows.map((row, i) => (
                   <tr
                     key={row.service}
                     className={cn(
                       "border-b border-[#d4af37]/5 hover:bg-[#161616]/50 transition-colors",
-                      i === topServicesData.length - 1 && "border-b-0"
+                      i === topServicesRows.length - 1 && "border-b-0"
                     )}
                   >
                     <td className="text-[13px] text-[#ccc] font-medium py-3 pr-4">
@@ -436,13 +524,17 @@ export function AnalyticsPage() {
                       {row.bookings}
                     </td>
                     <td className="text-[13px] text-[#ccc] py-3 px-2 text-right tabular-nums">
-                      {row.revenue}
+                      {formatCurrency(row.revenue)}
                     </td>
                     <td className="py-3 px-2 text-right">
-                      <StarRating rating={row.rating} />
+                      {row.avgRating > 0 ? (
+                        <StarRating rating={row.avgRating} />
+                      ) : (
+                        <span className="text-[13px] text-[#555]">—</span>
+                      )}
                     </td>
                     <td className="py-3 pl-2 text-right">
-                      <TrendBadge value={row.trend} />
+                      <TrendBadge value="—" />
                     </td>
                   </tr>
                 ))}

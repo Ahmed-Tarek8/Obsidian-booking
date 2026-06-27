@@ -1,784 +1,531 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Calendar,
-  Activity,
-  CheckCircle,
-  Wrench,
-  Search,
-  Filter,
-  LayoutGrid,
-  List,
-  X,
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
-  MapPin,
-  Users,
-  Sparkles,
-  User,
-  Clock,
-  Edit3,
-  MoreHorizontal,
-  ArrowUpDown,
-  StickyNote,
-  BookmarkPlus,
-  Settings2,
+  Calendar, Activity, CheckCircle, Wrench, Search, Filter,
+  LayoutGrid, List, X, ChevronDown, ChevronLeft, ChevronRight,
+  MapPin, Users, Clock, Edit3, MoreHorizontal, ArrowUpDown,
+  StickyNote, BookmarkPlus, CalendarPlus, User, Phone,
 } from "lucide-react";
 import { StatCard } from "./StatCard";
 import { PremiumButton } from "./PremiumButton";
 import { SectionPanel } from "./SectionPanel";
 import { cn } from "@/lib/utils";
+import { useBookingStore, formatTime12 } from "@/lib/store";
+import type { Resource, ResourceStatus, Appointment } from "@/lib/types";
 
-/* ─── Data ─── */
+const PER_PAGE = 7;
+const SLOTS = ["8 AM","9 AM","10 AM","11 AM","12 PM","1 PM","2 PM","3 PM","4 PM","5 PM","6 PM","7 PM","8 PM"];
 
-type ResourceStatus = "available" | "in-use" | "maintenance";
+const TYPE_COLORS: Record<string, string> = {
+  "Meeting Room": "bg-purple-500/15 text-purple-400 border-purple-500/20",
+  "Studio": "bg-blue-500/15 text-blue-400 border-blue-500/20",
+  "Conference Room": "bg-purple-500/15 text-purple-400 border-purple-500/20",
+  "Equipment": "bg-amber-500/15 text-amber-400 border-amber-500/20",
+  "Lounge": "bg-green-500/15 text-green-400 border-green-500/20",
+  "Vehicle": "bg-red-500/15 text-red-400 border-red-500/20",
+};
 
-interface ResourceRow {
-  id: string;
-  name: string;
-  code: string;
-  type: string;
-  location: string;
-  availability: string;
-  nextBooking: string;
-  capacity: string;
-  status: ResourceStatus;
-  // detail panel fields
-  amenities: string[];
-  manager: string;
-  managerTitle: string;
-  managerInitials: string;
-  timeSlots: { time: string; available: boolean }[];
-  upcomingBookings: {
-    date: string;
-    time: string;
-    title: string;
-    booker: string;
-    status: "confirmed" | "pending";
-  }[];
-  notes: string;
-}
+const STATUS_MAP: Record<string, { dot: string; label: string; badge: string }> = {
+  "Available": { dot: "bg-emerald-400", label: "Available", badge: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" },
+  "In Use": { dot: "bg-blue-400", label: "In Use", badge: "bg-blue-500/10 text-blue-400 border-blue-500/20" },
+  "Maintenance": { dot: "bg-red-400", label: "Maintenance", badge: "bg-red-500/10 text-red-400 border-red-500/20" },
+};
 
-const allResources: ResourceRow[] = [
-  {
-    id: "r1",
-    name: "Meeting Room A",
-    code: "MR-A",
-    type: "Meeting Room",
-    location: "Executive Suite Floor 2",
-    availability: "Available",
-    nextBooking: "Today 12:00 PM — Client Strategy Call",
-    capacity: "8",
-    status: "available",
-    amenities: ["Projector", "Whiteboard", "Video Conferencing", "Coffee Machine"],
-    manager: "James Smith",
-    managerTitle: "Facility Manager",
-    managerInitials: "JS",
-    timeSlots: [
-      { time: "8 AM", available: true },
-      { time: "9 AM", available: true },
-      { time: "10 AM", available: true },
-      { time: "11 AM", available: true },
-      { time: "12 PM", available: false },
-      { time: "1 PM", available: false },
-      { time: "2 PM", available: true },
-      { time: "3 PM", available: true },
-      { time: "4 PM", available: true },
-      { time: "5 PM", available: true },
-      { time: "6 PM", available: true },
-      { time: "7 PM", available: true },
-      { time: "8 PM", available: true },
-    ],
-    upcomingBookings: [
-      { date: "May 15", time: "12:00 PM – 1:30 PM", title: "Client Strategy Call", booker: "Smith & Co • James Smith", status: "confirmed" },
-      { date: "May 16", time: "9:00 AM – 10:30 AM", title: "Team Planning Session", booker: "Staff A • Emily Davis", status: "confirmed" },
-      { date: "May 17", time: "3:00 PM – 4:00 PM", title: "Product Roadmap Review", booker: "Staff B • Michael Chen", status: "pending" },
-    ],
-    notes: "Newly renovated in April. Equipped with 4K display and surround sound.",
-  },
-  {
-    id: "r2",
-    name: "Studio B",
-    code: "ST-B",
-    type: "Studio",
-    location: "Executive Suite Floor 1",
-    availability: "In Use",
-    nextBooking: "Today 1:30 PM — Product Photoshoot",
-    capacity: "12",
-    status: "in-use",
-    amenities: ["Lighting Rig", "Backdrops", "Sound Booth", "Green Screen"],
-    manager: "Emily Davis",
-    managerTitle: "Studio Coordinator",
-    managerInitials: "ED",
-    timeSlots: [
-      { time: "8 AM", available: true },
-      { time: "9 AM", available: true },
-      { time: "10 AM", available: true },
-      { time: "11 AM", available: true },
-      { time: "12 PM", available: false },
-      { time: "1 PM", available: false },
-      { time: "2 PM", available: false },
-      { time: "3 PM", available: true },
-      { time: "4 PM", available: true },
-      { time: "5 PM", available: true },
-      { time: "6 PM", available: true },
-      { time: "7 PM", available: false },
-      { time: "8 PM", available: false },
-    ],
-    upcomingBookings: [
-      { date: "May 15", time: "1:30 PM – 4:00 PM", title: "Product Photoshoot", booker: "Marketing • Sarah Lee", status: "confirmed" },
-      { date: "May 16", time: "10:00 AM – 12:00 PM", title: "Video Shoot — Ad Campaign", booker: "External • Agency X", status: "confirmed" },
-    ],
-    notes: "Green screen needs recalibration. Scheduled for next week.",
-  },
-  {
-    id: "r3",
-    name: "Conference Suite",
-    code: "CS-1",
-    type: "Conference Room",
-    location: "Executive Suite Floor 3",
-    availability: "Available",
-    nextBooking: "Today 2:00 PM — Quarterly Review",
-    capacity: "20",
-    status: "available",
-    amenities: ["Projector", "Microphone System", "Video Conferencing", "Podium"],
-    manager: "Michael Chen",
-    managerTitle: "Operations Lead",
-    managerInitials: "MC",
-    timeSlots: [
-      { time: "8 AM", available: true },
-      { time: "9 AM", available: true },
-      { time: "10 AM", available: true },
-      { time: "11 AM", available: true },
-      { time: "12 PM", available: true },
-      { time: "1 PM", available: true },
-      { time: "2 PM", available: false },
-      { time: "3 PM", available: false },
-      { time: "4 PM", available: true },
-      { time: "5 PM", available: true },
-      { time: "6 PM", available: true },
-      { time: "7 PM", available: true },
-      { time: "8 PM", available: true },
-    ],
-    upcomingBookings: [
-      { date: "May 15", time: "2:00 PM – 4:00 PM", title: "Quarterly Review", booker: "Leadership • CEO Office", status: "confirmed" },
-    ],
-    notes: "Largest meeting space. Prioritize executive bookings.",
-  },
-  {
-    id: "r4",
-    name: "Projector Kit",
-    code: "PK-01",
-    type: "Equipment",
-    location: "Equipment Storage Floor 1",
-    availability: "Available",
-    nextBooking: "Tomorrow 9:00 AM — Team Presentation",
-    capacity: "N/A",
-    status: "available",
-    amenities: ["4K Projector", "HDMI Cables", "Remote Control", "Carry Case"],
-    manager: "Alex Turner",
-    managerTitle: "Equipment Manager",
-    managerInitials: "AT",
-    timeSlots: [
-      { time: "8 AM", available: true },
-      { time: "9 AM", available: false },
-      { time: "10 AM", available: false },
-      { time: "11 AM", available: true },
-      { time: "12 PM", available: true },
-      { time: "1 PM", available: true },
-      { time: "2 PM", available: true },
-      { time: "3 PM", available: true },
-      { time: "4 PM", available: true },
-      { time: "5 PM", available: true },
-      { time: "6 PM", available: true },
-      { time: "7 PM", available: true },
-      { time: "8 PM", available: true },
-    ],
-    upcomingBookings: [
-      { date: "May 16", time: "9:00 AM – 11:00 AM", title: "Team Presentation", booker: "Staff A • Emily Davis", status: "confirmed" },
-    ],
-    notes: "Bulb has 200 hours remaining. Replacement ordered.",
-  },
-  {
-    id: "r5",
-    name: "VIP Lounge",
-    code: "VL-1",
-    type: "Lounge",
-    location: "Executive Suite Floor 2",
-    availability: "In Use",
-    nextBooking: "Today 5:00 PM — VIP Client Meeting",
-    capacity: "10",
-    status: "in-use",
-    amenities: ["Premium Seating", "Mini Bar", "Entertainment System", "Private Restroom"],
-    manager: "James Smith",
-    managerTitle: "Facility Manager",
-    managerInitials: "JS",
-    timeSlots: [
-      { time: "8 AM", available: true },
-      { time: "9 AM", available: true },
-      { time: "10 AM", available: true },
-      { time: "11 AM", available: true },
-      { time: "12 PM", available: true },
-      { time: "1 PM", available: true },
-      { time: "2 PM", available: true },
-      { time: "3 PM", available: true },
-      { time: "4 PM", available: true },
-      { time: "5 PM", available: false },
-      { time: "6 PM", available: false },
-      { time: "7 PM", available: false },
-      { time: "8 PM", available: false },
-    ],
-    upcomingBookings: [
-      { date: "May 15", time: "5:00 PM – 7:00 PM", title: "VIP Client Meeting", booker: "VIP • Investor Group", status: "confirmed" },
-    ],
-    notes: "Refreshments restocked daily. Always confirm catering 24h ahead.",
-  },
-  {
-    id: "r6",
-    name: "Mobile Setup",
-    code: "MS-01",
-    type: "Equipment",
-    location: "Mobile",
-    availability: "Available",
-    nextBooking: "Tomorrow 8:00 AM — Off-site Event",
-    capacity: "N/A",
-    status: "available",
-    amenities: ["Portable Display", "Wireless Mic", "Speaker System", "Tablet Stand"],
-    manager: "Alex Turner",
-    managerTitle: "Equipment Manager",
-    managerInitials: "AT",
-    timeSlots: [
-      { time: "8 AM", available: true },
-      { time: "9 AM", available: true },
-      { time: "10 AM", available: true },
-      { time: "11 AM", available: true },
-      { time: "12 PM", available: true },
-      { time: "1 PM", available: true },
-      { time: "2 PM", available: true },
-      { time: "3 PM", available: true },
-      { time: "4 PM", available: true },
-      { time: "5 PM", available: true },
-      { time: "6 PM", available: true },
-      { time: "7 PM", available: true },
-      { time: "8 PM", available: true },
-    ],
-    upcomingBookings: [
-      { date: "May 16", time: "8:00 AM – 12:00 PM", title: "Off-site Event", booker: "Events • Sarah Lee", status: "confirmed" },
-    ],
-    notes: "Fully charged and ready. Check GPS tracker before dispatch.",
-  },
-  {
-    id: "r7",
-    name: "Vehicle 01",
-    code: "VH-01",
-    type: "Vehicle",
-    location: "Main Location Garage",
-    availability: "Maintenance",
-    nextBooking: "No upcoming",
-    capacity: "4",
-    status: "maintenance",
-    amenities: ["GPS Navigation", "Leather Interior", "WiFi", "Refreshments"],
-    manager: "Michael Chen",
-    managerTitle: "Operations Lead",
-    managerInitials: "MC",
-    timeSlots: [
-      { time: "8 AM", available: false },
-      { time: "9 AM", available: false },
-      { time: "10 AM", available: false },
-      { time: "11 AM", available: false },
-      { time: "12 PM", available: false },
-      { time: "1 PM", available: false },
-      { time: "2 PM", available: false },
-      { time: "3 PM", available: false },
-      { time: "4 PM", available: false },
-      { time: "5 PM", available: false },
-      { time: "6 PM", available: false },
-      { time: "7 PM", available: false },
-      { time: "8 PM", available: false },
-    ],
-    upcomingBookings: [],
-    notes: "Scheduled maintenance — oil change and tire rotation. ETA: May 18.",
-  },
-];
+const RES_ICONS: Record<string, typeof Calendar> = {
+  "Meeting Room": Calendar, "Studio": Edit3, "Conference Room": Users,
+  "Equipment": Activity, "Lounge": BookmarkPlus, "Vehicle": MapPin,
+};
 
-/* ─── Sub-components ─── */
-
-function ResourceStatusBadge({ status }: { status: ResourceStatus }) {
-  const config = {
-    available: { label: "Available", dot: "bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.4)]", cls: "text-emerald-400 border-emerald-500/20 bg-emerald-500/5" },
-    "in-use": { label: "In Use", dot: "bg-blue-500 shadow-[0_0_6px_rgba(59,130,246,0.4)]", cls: "text-blue-400 border-blue-500/20 bg-blue-500/5" },
-    maintenance: { label: "Maintenance", dot: "bg-red-500 shadow-[0_0_6px_rgba(239,68,68,0.4)]", cls: "text-red-400 border-red-500/20 bg-red-500/5" },
-  };
-  const c = config[status];
-  return (
-    <span className={cn("inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border", c.cls)}>
-      <span className={cn("w-1.5 h-1.5 rounded-full", c.dot)} />
-      {c.label}
-    </span>
-  );
-}
-
-function TypeBadge({ type }: { type: string }) {
-  return (
-    <span className="text-[11px] font-medium text-purple-400 bg-purple-500/10 border border-purple-500/20 px-2 py-0.5 rounded-md">
-      {type}
-    </span>
-  );
-}
-
-function FilterDropdown({ label, icon: Icon }: { label: string; icon: typeof Calendar }) {
+function FilterDropdown({ label, options, value, onChange }: {
+  label: string; options: string[]; value: string; onChange: (v: string) => void;
+}) {
   const [open, setOpen] = useState(false);
   return (
     <div className="relative">
-      <button
-        onClick={() => setOpen(!open)}
-        className="premium-btn flex items-center gap-2 px-3.5 py-2 rounded-lg text-[13px] text-[#ccc] font-medium
-          bg-gradient-to-b from-[#1e1e1e] to-[#161616] border border-[#d4af37]/10
-          hover:border-[#d4af37]/25 hover:text-[#e0e0e0] transition-all cursor-pointer
-          shadow-[0_1px_2px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.03)]"
-      >
-        <Icon className="w-3.5 h-3.5 text-[#d4af37]/60" />
-        <span>{label}</span>
+      <button onClick={() => setOpen(!open)}
+        className="premium-btn flex items-center gap-2 px-3.5 py-2 rounded-lg text-[13px] text-[#ccc] font-medium bg-gradient-to-b from-[#1e1e1e] to-[#161616] border border-[#d4af37]/10 hover:border-[#d4af37]/25 transition-all cursor-pointer">
+        <span>{value || label}</span>
         <ChevronDown className={cn("w-3 h-3 text-[#666] transition-transform", open && "rotate-180")} />
       </button>
+      {open && (
+        <div className="absolute top-full mt-1 left-0 z-50 min-w-[160px] bg-[#1a1a1a] border border-[#d4af37]/15 rounded-lg shadow-xl py-1">
+          {options.map((o) => (
+            <button key={o} onClick={() => { onChange(o === label ? "" : o); setOpen(false); }}
+              className={cn("w-full text-left px-3 py-2 text-[13px] hover:bg-[#d4af37]/5 transition-colors cursor-pointer",
+                value === o ? "text-[#d4af37]" : "text-[#ccc]")}>{o}</button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
 
 function Pagination({ current, total, onChange }: { current: number; total: number; onChange: (p: number) => void }) {
-  const perPage = 7;
-  const pages = Math.ceil(total / perPage);
+  const pages = Math.ceil(total / PER_PAGE);
   return (
     <div className="flex items-center justify-between px-1 pt-3">
       <span className="text-[12px] text-[#666]">
-        Showing {current * perPage - perPage + 1} to {Math.min(current * perPage, total)} of {total} resources
+        Showing {current * PER_PAGE - PER_PAGE + 1} to {Math.min(current * PER_PAGE, total)} of {total} resources
       </span>
       <div className="flex items-center gap-1.5">
-        <button
-          onClick={() => onChange(Math.max(1, current - 1))}
-          disabled={current === 1}
-          className="w-8 h-8 rounded-lg flex items-center justify-center text-[#666] hover:text-[#d4af37] hover:bg-[#1e1e1e] disabled:opacity-30 disabled:cursor-default transition-all cursor-pointer"
-        >
-          <ChevronLeft className="w-4 h-4" />
-        </button>
+        <button onClick={() => onChange(Math.max(1, current - 1))} disabled={current === 1}
+          className="w-8 h-8 rounded-lg flex items-center justify-center text-[#666] hover:text-[#d4af37] hover:bg-[#1e1e1e] disabled:opacity-30 transition-all cursor-pointer">
+          <ChevronLeft className="w-4 h-4" /></button>
         {Array.from({ length: pages }, (_, i) => i + 1).map((p) => (
-          <button
-            key={p}
-            onClick={() => onChange(p)}
-            className={cn(
-              "w-8 h-8 rounded-lg text-[12px] font-semibold transition-all cursor-pointer",
-              p === current
-                ? "bg-gradient-to-b from-[#d4af37] via-[#c9a227] to-[#b8960b] text-[#0a0a0a] shadow-[0_1px_4px_rgba(212,175,55,0.3)]"
-                : "text-[#666] hover:text-[#d4af37] hover:bg-[#1e1e1e]"
-            )}
-          >
-            {p}
-          </button>
+          <button key={p} onClick={() => onChange(p)}
+            className={cn("w-8 h-8 rounded-lg text-[12px] font-semibold transition-all cursor-pointer",
+              p === current ? "bg-gradient-to-b from-[#d4af37] via-[#c9a227] to-[#b8960b] text-[#0a0a0a]" : "text-[#666] hover:text-[#d4af37] hover:bg-[#1e1e1e]")}>{p}</button>
         ))}
-        <button
-          onClick={() => onChange(Math.min(pages, current + 1))}
-          disabled={current === pages}
-          className="w-8 h-8 rounded-lg flex items-center justify-center text-[#666] hover:text-[#d4af37] hover:bg-[#1e1e1e] disabled:opacity-30 disabled:cursor-default transition-all cursor-pointer"
-        >
-          <ChevronRight className="w-4 h-4" />
-        </button>
+        <button onClick={() => onChange(Math.min(pages, current + 1))} disabled={current === pages}
+          className="w-8 h-8 rounded-lg flex items-center justify-center text-[#666] hover:text-[#d4af37] hover:bg-[#1e1e1e] disabled:opacity-30 transition-all cursor-pointer">
+          <ChevronRight className="w-4 h-4" /></button>
       </div>
     </div>
   );
 }
 
-/* ─── Detail Panel ─── */
+/* ── Reserve Modal ── */
+function ReserveModal({ resource, onClose }: { resource: Resource; onClose: () => void }) {
+  const { clients, services, staff, addAppointment } = useBookingStore();
+  const [clientId, setClientId] = useState("");
+  const [serviceId, setServiceId] = useState("");
+  const [date, setDate] = useState("");
+  const [startTime, setStartTime] = useState("");
 
-function DetailRow({ icon: Icon, label, value, sub }: { icon: typeof Clock; label: string; value: string; sub?: string }) {
+  const selectedService = services.find(s => s.id === serviceId);
+  const endTime = useMemo(() => {
+    if (!startTime || !selectedService) return "";
+    const [h, m] = startTime.split(":").map(Number);
+    const total = (h * 60 + m) + selectedService.duration;
+    return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
+  }, [startTime, selectedService]);
+
+  const handleCreate = () => {
+    if (!clientId || !serviceId || !date || !startTime || !endTime) return;
+    const svc = services.find(s => s.id === serviceId)!;
+    const validStaff = staff.filter(s => svc.staffIds.includes(s.id));
+    addAppointment({
+      clientId, serviceId, staffId: validStaff[0]?.id || staff[0].id,
+      resourceId: resource.id, date, startTime, endTime,
+      status: "pending", notes: `Reserved for ${resource.name}`,
+    });
+    onClose();
+  };
+
+  const timeSlots = Array.from({ length: 20 }, (_, i) => {
+    const h = 8 + Math.floor(i * 0.5);
+    const m = i % 2 === 0 ? "00" : "30";
+    return `${String(h).padStart(2, "0")}:${m}`;
+  });
+
   return (
-    <div className="flex items-start gap-3">
-      <div className="w-7 h-7 rounded-md bg-[#0e0e0e] border border-[#d4af37]/8 flex items-center justify-center flex-shrink-0 mt-0.5">
-        <Icon className="w-3.5 h-3.5 text-[#d4af37]" strokeWidth={1.8} />
-      </div>
-      <div>
-        <div className="text-[10px] font-medium text-[#555] uppercase tracking-wider">{label}</div>
-        <div className="text-[13px] text-[#e0e0e0] font-medium mt-0.5">{value}</div>
-        {sub && <div className="text-[10px] text-[#666]">{sub}</div>}
-      </div>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={onClose}>
+      <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
+        className="premium-panel rounded-xl w-full max-w-md p-6 space-y-4" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-bold text-[#e0e0e0]">Reserve {resource.name}</h3>
+          <button onClick={onClose} className="text-[#555] hover:text-[#e0e0e0] transition-colors cursor-pointer"><X className="w-4 h-4" /></button>
+        </div>
+        <div className="space-y-3">
+          <div>
+            <label className="text-[10px] font-medium text-[#555] uppercase tracking-wider">Client</label>
+            <select value={clientId} onChange={e => setClientId(e.target.value)}
+              className="w-full mt-1 premium-input rounded-lg px-3 py-2 text-[13px] text-[#ccc] bg-[#0e0e0e] border border-[#d4af37]/10">
+              <option value="">Select client...</option>
+              {clients.map(c => (
+                <option key={c.id} value={c.id}>{c.name}{c.tier === "VIP" ? " (VIP)" : ""}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="text-[10px] font-medium text-[#555] uppercase tracking-wider">Service</label>
+            <select value={serviceId} onChange={e => setServiceId(e.target.value)}
+              className="w-full mt-1 premium-input rounded-lg px-3 py-2 text-[13px] text-[#ccc] bg-[#0e0e0e] border border-[#d4af37]/10">
+              <option value="">Select service...</option>
+              {services.map(s => (
+                <option key={s.id} value={s.id}>{s.name} — ${s.price} ({s.duration} min)</option>
+              ))}
+            </select>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-[10px] font-medium text-[#555] uppercase tracking-wider">Date</label>
+              <input type="date" value={date} onChange={e => setDate(e.target.value)}
+                className="w-full mt-1 premium-input rounded-lg px-3 py-2 text-[13px] text-[#ccc] bg-[#0e0e0e] border border-[#d4af37]/10" />
+            </div>
+            <div>
+              <label className="text-[10px] font-medium text-[#555] uppercase tracking-wider">Start Time</label>
+              <select value={startTime} onChange={e => setStartTime(e.target.value)}
+                className="w-full mt-1 premium-input rounded-lg px-3 py-2 text-[13px] text-[#ccc] bg-[#0e0e0e] border border-[#d4af37]/10">
+                <option value="">Select...</option>
+                {timeSlots.map(t => (
+                  <option key={t} value={t}>{formatTime12(t)}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+          {endTime && <p className="text-[11px] text-[#888]">End time: {formatTime12(endTime)}</p>}
+        </div>
+        <PremiumButton variant="primary" className="w-full" onClick={handleCreate}>
+          <CalendarPlus className="w-4 h-4" /> Create Reservation
+        </PremiumButton>
+      </motion.div>
     </div>
   );
 }
 
-function ResourceDetailPanel({ resource, onClose }: { resource: ResourceRow; onClose: () => void }) {
+/* ── Detail Panel ── */
+function ResourceDetailPanel({ resource, onClose }: { resource: Resource; onClose: () => void }) {
+  const { appointments, clients, services, staff, updateResourceStatus } = useBookingStore();
+  const [showReserve, setShowReserve] = useState(false);
+  const st = STATUS_MAP[resource.status] || STATUS_MAP["Available"];
+  const Icon = RES_ICONS[resource.type] || Calendar;
+
+  const upcomingBookings = useMemo(() =>
+    appointments
+      .filter(a => a.resourceId === resource.id && (a.status === "confirmed" || a.status === "pending"))
+      .sort((a, b) => `${a.date}${a.startTime}`.localeCompare(`${b.date}${b.startTime}`))
+      .slice(0, 3)
+      .map(a => {
+        const client = clients.find(c => c.id === a.clientId);
+        const service = services.find(s => s.id === a.serviceId);
+        const staffMember = staff.find(s => s.id === a.staffId);
+        return {
+          id: a.id, date: a.date, startTime: a.startTime, endTime: a.endTime,
+          title: service?.name || "Unknown", clientName: client?.name || "Unknown",
+          staffName: staffMember?.name || "Unknown", status: a.status,
+        };
+      }),
+    [appointments, resource.id, clients, services, staff]
+  );
+
+  const timeSlots = useMemo(() => {
+    const todayAppts = appointments.filter(a => a.resourceId === resource.id && a.date === "2024-05-15");
+    return SLOTS.map(slot => {
+      const hour = slot.includes("PM") ? (parseInt(slot) + 12) : parseInt(slot);
+      const booked = todayAppts.some(a => {
+        const startH = parseInt(a.startTime.split(":")[0]);
+        const endH = parseInt(a.endTime.split(":")[0]);
+        return hour >= startH && hour < endH;
+      });
+      return { time: slot, available: !booked };
+    });
+  }, [appointments, resource.id]);
+
+  const manager = staff.find(s => s.name === resource.manager);
+
   return (
-    <motion.aside
-      initial={{ opacity: 0, x: 16 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: 16 }}
-      transition={{ duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
-      className="w-[340px] flex-shrink-0 h-full"
-    >
+    <motion.aside initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 16 }}
+      transition={{ duration: 0.3 }} className="w-[340px] flex-shrink-0 h-full">
       <div className="premium-panel rounded-xl h-full flex flex-col">
-        {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-[#d4af37]/8">
           <div className="flex items-center gap-2">
             <div className="w-1.5 h-1.5 rounded-full bg-[#d4af37] shadow-[0_0_6px_rgba(212,175,55,0.4)]" />
             <span className="text-xs font-semibold text-[#999] uppercase tracking-widest">Resource Details</span>
           </div>
-          <button
-            onClick={onClose}
-            className="w-7 h-7 rounded-md flex items-center justify-center text-[#555] hover:text-[#e0e0e0] hover:bg-[#1e1e1e] transition-all cursor-pointer"
-          >
-            <X className="w-3.5 h-3.5" />
-          </button>
+          <button onClick={onClose} className="w-7 h-7 rounded-md flex items-center justify-center text-[#555] hover:text-[#e0e0e0] hover:bg-[#1e1e1e] transition-all cursor-pointer">
+            <X className="w-3.5 h-3.5" /></button>
         </div>
 
         <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
-          {/* Resource name & code */}
-          <div>
-            <div className="text-sm font-semibold text-[#e0e0e0]">{resource.name}</div>
-            <div className="text-[11px] text-[#666] mt-0.5">
-              {resource.code} &bull; {resource.type}
-            </div>
-            <div className="mt-2">
-              <ResourceStatusBadge status={resource.status} />
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-[#d4af37]/10 border border-[#d4af37]/20 flex items-center justify-center">
+              <Icon className="w-5 h-5 text-[#d4af37]" /></div>
+            <div>
+              <div className="text-sm font-semibold text-[#e0e0e0]">{resource.name}</div>
+              <div className="text-[11px] text-[#666]">{resource.code} • {resource.type}</div>
             </div>
           </div>
 
-          {/* Action buttons */}
+          <span className={cn("inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium border", st.badge)}>
+            <div className={cn("w-1.5 h-1.5 rounded-full", st.dot)} />{st.label}</span>
+
           <div className="flex items-center gap-2">
-            <PremiumButton variant="primary" size="sm">
-              <BookmarkPlus className="w-3.5 h-3.5" />
-              Reserve
-            </PremiumButton>
-            <button className="w-8 h-8 rounded-lg flex items-center justify-center bg-[#161616] border border-[#d4af37]/8 text-[#888] hover:text-[#d4af37] hover:border-[#d4af37]/20 transition-all cursor-pointer">
-              <Edit3 className="w-3.5 h-3.5" />
-            </button>
-            <button className="w-8 h-8 rounded-lg flex items-center justify-center bg-[#161616] border border-[#d4af37]/8 text-[#888] hover:text-[#d4af37] hover:border-[#d4af37]/20 transition-all cursor-pointer">
-              <Settings2 className="w-3.5 h-3.5" />
-            </button>
-            <button className="w-8 h-8 rounded-lg flex items-center justify-center bg-[#161616] border border-[#d4af37]/8 text-[#888] hover:text-[#d4af37] hover:border-[#d4af37]/20 transition-all cursor-pointer">
-              <MoreHorizontal className="w-3.5 h-3.5" />
-            </button>
+            <PremiumButton variant="primary" size="sm" onClick={() => setShowReserve(true)}>
+              <BookmarkPlus className="w-3.5 h-3.5" /> Reserve</PremiumButton>
+            {resource.status === "Available" && (
+              <button onClick={() => updateResourceStatus(resource.id, "Maintenance")}
+                className="premium-btn px-3 py-1.5 rounded-lg text-[12px] text-[#ccc] bg-[#161616] border border-[#d4af37]/10 hover:border-[#d4af37]/25 transition-all cursor-pointer flex items-center gap-1.5">
+                <Wrench className="w-3.5 h-3.5 text-[#d4af37]/60" /> Mark Maintenance</button>
+            )}
+            {resource.status === "Maintenance" && (
+              <button onClick={() => updateResourceStatus(resource.id, "Available")}
+                className="premium-btn px-3 py-1.5 rounded-lg text-[12px] text-[#ccc] bg-[#161616] border border-[#d4af37]/10 hover:border-[#d4af37]/25 transition-all cursor-pointer flex items-center gap-1.5">
+                <CheckCircle className="w-3.5 h-3.5 text-emerald-400" /> Mark Available</button>
+            )}
           </div>
 
           {/* Availability Today */}
-          <div className="pt-3 border-t border-[#d4af37]/8">
-            <div className="text-[10px] font-semibold text-[#555] uppercase tracking-wider mb-3">Availability Today</div>
-            <div className="space-y-1.5">
-              {resource.timeSlots.map((slot) => (
-                <div key={slot.time} className="flex items-center gap-2.5">
-                  <span className="text-[10px] text-[#666] w-10 text-right tabular-nums">{slot.time}</span>
-                  <div className="flex-1 h-3 rounded-full bg-[#0e0e0e] border border-[#d4af37]/5 overflow-hidden">
-                    <motion.div
-                      initial={{ width: 0 }}
-                      animate={{ width: "100%" }}
-                      transition={{ duration: 0.4, delay: 0.05 }}
-                      className={cn(
-                        "h-full rounded-full",
-                        slot.available
-                          ? "bg-gradient-to-r from-emerald-600 to-emerald-500"
-                          : "bg-gradient-to-r from-red-600 to-red-500"
-                      )}
-                    />
-                  </div>
+          <div>
+            <div className="text-[10px] font-semibold text-[#555] uppercase tracking-widest mb-3">Availability Today</div>
+            <div className="flex gap-1 flex-wrap">
+              {timeSlots.map((slot, i) => (
+                <div key={i} className="flex flex-col items-center gap-1">
+                  <div className={cn("w-7 h-3 rounded-sm", slot.available ? "bg-emerald-500/40" : "bg-red-500/40")} />
+                  <span className="text-[8px] text-[#555]">{slot.time}</span>
                 </div>
               ))}
             </div>
-
-            {/* Legend */}
             <div className="flex items-center gap-4 mt-3">
-              <div className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
-                <span className="text-[10px] text-[#666]">Available</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-red-500" />
-                <span className="text-[10px] text-[#666]">Booked</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-[#444]" />
-                <span className="text-[10px] text-[#666]">Maintenance</span>
-              </div>
-            </div>
-
-            {/* Current time indicator */}
-            <div className="mt-2 flex items-center gap-1.5">
-              <Clock className="w-3 h-3 text-[#d4af37]" />
-              <span className="text-[10px] text-[#d4af37] font-medium">Current Time: 10:45 AM</span>
+              <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-emerald-400" /><span className="text-[10px] text-[#666]">Available</span></div>
+              <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-red-400" /><span className="text-[10px] text-[#666]">Booked</span></div>
             </div>
           </div>
 
-          {/* Resource Information */}
-          <div className="pt-3 border-t border-[#d4af37]/8">
-            <div className="text-[10px] font-semibold text-[#555] uppercase tracking-wider mb-3">Resource Information</div>
-            <div className="space-y-3.5">
-              <DetailRow icon={MapPin} label="Location" value={resource.location} />
-              <DetailRow icon={Users} label="Capacity" value={resource.capacity === "N/A" ? "Not Applicable" : `${resource.capacity} persons`} />
-              <div className="flex items-start gap-3">
-                <div className="w-7 h-7 rounded-md bg-[#0e0e0e] border border-[#d4af37]/8 flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <Sparkles className="w-3.5 h-3.5 text-[#d4af37]" strokeWidth={1.8} />
-                </div>
-                <div>
-                  <div className="text-[10px] font-medium text-[#555] uppercase tracking-wider">Amenities</div>
-                  <div className="flex flex-wrap gap-1.5 mt-1.5">
-                    {resource.amenities.map((a) => (
-                      <span key={a} className="text-[10px] font-medium text-[#999] bg-[#1a1a1a] border border-[#d4af37]/8 px-2 py-0.5 rounded-md">
-                        {a}
-                      </span>
-                    ))}
-                  </div>
-                </div>
+          {/* Info */}
+          <div className="space-y-3">
+            <div className="flex items-start gap-3">
+              <div className="w-7 h-7 rounded-md bg-[#0e0e0e] border border-[#d4af37]/8 flex items-center justify-center flex-shrink-0">
+                <MapPin className="w-3.5 h-3.5 text-[#d4af37]" strokeWidth={1.8} /></div>
+              <div>
+                <div className="text-[10px] text-[#555] uppercase tracking-wider">Location</div>
+                <div className="text-[13px] text-[#e0e0e0] mt-0.5">{resource.location}</div>
               </div>
-              <DetailRow icon={User} label="Resource Manager" value={`${resource.manager} — ${resource.managerTitle}`} />
+            </div>
+            <div className="flex items-start gap-3">
+              <div className="w-7 h-7 rounded-md bg-[#0e0e0e] border border-[#d4af37]/8 flex items-center justify-center flex-shrink-0">
+                <Users className="w-3.5 h-3.5 text-[#d4af37]" strokeWidth={1.8} /></div>
+              <div>
+                <div className="text-[10px] text-[#555] uppercase tracking-wider">Capacity</div>
+                <div className="text-[13px] text-[#e0e0e0] mt-0.5">{resource.capacity ? `${resource.capacity} people` : "N/A"}</div>
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <div className="w-7 h-7 rounded-md bg-[#0e0e0e] border border-[#d4af37]/8 flex items-center justify-center flex-shrink-0">
+                <StickyNote className="w-3.5 h-3.5 text-[#d4af37]" strokeWidth={1.8} /></div>
+              <div>
+                <div className="text-[10px] text-[#555] uppercase tracking-wider">Amenities</div>
+                <div className="text-[13px] text-[#e0e0e0] mt-0.5">{resource.amenities.join(", ")}</div>
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <div className="w-7 h-7 rounded-md bg-[#0e0e0e] border border-[#d4af37]/8 flex items-center justify-center flex-shrink-0">
+                <User className="w-3.5 h-3.5 text-[#d4af37]" strokeWidth={1.8} /></div>
+              <div>
+                <div className="text-[10px] text-[#555] uppercase tracking-wider">Manager</div>
+                <div className="text-[13px] text-[#e0e0e0] mt-0.5">{manager?.name || resource.manager}</div>
+              </div>
             </div>
           </div>
 
           {/* Upcoming Bookings */}
-          {resource.upcomingBookings.length > 0 && (
-            <div className="pt-3 border-t border-[#d4af37]/8">
-              <div className="text-[10px] font-semibold text-[#555] uppercase tracking-wider mb-3">Upcoming Bookings</div>
-              <div className="space-y-2.5">
-                {resource.upcomingBookings.map((booking, idx) => (
-                  <div
-                    key={idx}
-                    className="bg-[#0e0e0e] border border-[#d4af37]/8 rounded-lg p-3 space-y-1.5"
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="text-[12px] text-[#e0e0e0] font-medium">{booking.title}</span>
-                      <span
-                        className={cn(
-                          "text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md border",
-                          booking.status === "confirmed"
-                            ? "text-emerald-400 border-emerald-500/20 bg-emerald-500/5"
-                            : "text-amber-400 border-amber-500/20 bg-amber-500/5"
-                        )}
-                      >
-                        {booking.status === "confirmed" ? "Confirmed" : "Pending"}
-                      </span>
-                    </div>
-                    <div className="text-[10px] text-[#666]">
-                      {booking.date} &bull; {booking.time}
-                    </div>
-                    <div className="text-[10px] text-[#888]">{booking.booker}</div>
-                  </div>
-                ))}
-              </div>
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <div className="text-[10px] font-semibold text-[#555] uppercase tracking-widest">Upcoming Bookings</div>
             </div>
-          )}
+            {upcomingBookings.length === 0 ? (
+              <p className="text-[12px] text-[#555]">No upcoming bookings</p>
+            ) : (
+              <div className="space-y-3">
+                {upcomingBookings.map(b => {
+                  const dur = (() => {
+                    const [sh, sm] = b.startTime.split(":").map(Number);
+                    const [eh, em] = b.endTime.split(":").map(Number);
+                    return (eh * 60 + em) - (sh * 60 + sm);
+                  })();
+                  return (
+                    <div key={b.id} className="p-3 rounded-lg bg-[#0e0e0e] border border-[#d4af37]/6">
+                      <div className="text-[12px] text-[#e0e0e0] font-medium">{b.title}</div>
+                      <div className="text-[11px] text-[#666] mt-0.5">
+                        {formatTime12(b.startTime)} – {formatTime12(b.endTime)} ({dur} min)
+                      </div>
+                      <div className="text-[11px] text-[#555]">{b.clientName} • {b.staffName}</div>
+                      <span className={cn("inline-flex mt-1 px-2 py-0.5 rounded text-[10px] font-medium border",
+                        b.status === "confirmed" ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" : "bg-amber-500/10 text-amber-400 border-amber-500/20")}>
+                        {b.status === "confirmed" ? "Confirmed" : "Pending"}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
 
           {/* Notes */}
-          <div className="pt-3 border-t border-[#d4af37]/8">
-            <div className="flex items-center gap-1.5 mb-2">
-              <StickyNote className="w-3 h-3 text-[#555]" />
-              <div className="text-[10px] font-semibold text-[#555] uppercase tracking-wider">Notes</div>
+          {resource.notes && (
+            <div className="pt-3 border-t border-[#d4af37]/8">
+              <div className="text-[10px] font-semibold text-[#555] uppercase tracking-widest mb-2">Notes</div>
+              <p className="text-xs text-[#888] leading-relaxed">{resource.notes}</p>
             </div>
-            <p className="text-xs text-[#888] leading-relaxed">{resource.notes}</p>
-          </div>
-
-          {/* Gold divider */}
-          <div className="flex items-center gap-2">
-            <div className="flex-1 h-px bg-gradient-to-r from-transparent via-[#d4af37]/15 to-transparent" />
-            <div className="w-1 h-1 rotate-45 bg-[#d4af37]/25" />
-            <div className="flex-1 h-px bg-gradient-to-r from-transparent via-[#d4af37]/15 to-transparent" />
-          </div>
+          )}
         </div>
       </div>
+
+      <AnimatePresence>
+        {showReserve && <ReserveModal resource={resource} onClose={() => setShowReserve(false)} />}
+      </AnimatePresence>
     </motion.aside>
   );
 }
 
-/* ─── Main Page ─── */
-
+/* ── Main Page ── */
 export function ResourcesPage() {
-  const [search, setSearch] = useState("");
+  const { resources, appointments, clients, services, staff } = useBookingStore();
   const [page, setPage] = useState(1);
-  const [selectedId, setSelectedId] = useState<string | null>("r1");
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<"list" | "grid">("list");
+  const [search, setSearch] = useState("");
+  const [typeFilter, setTypeFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
 
-  const filtered = allResources;
-  const perPage = 7;
-  const totalPages = Math.ceil(filtered.length / perPage);
-  const paged = filtered.slice((page - 1) * perPage, page * perPage);
-  const selected = allResources.find((r) => r.id === selectedId);
+  const types = useMemo(() => Array.from(new Set(resources.map(r => r.type))), [resources]);
+  const statuses = ["Available", "In Use", "Maintenance"];
 
-  const columns: { key: string; label: string; sortable?: boolean }[] = [
-    { key: "resource", label: "RESOURCE", sortable: true },
-    { key: "type", label: "TYPE" },
-    { key: "location", label: "LOCATION" },
-    { key: "availability", label: "AVAILABILITY" },
-    { key: "nextBooking", label: "NEXT BOOKING" },
-    { key: "capacity", label: "CAPACITY" },
-    { key: "status", label: "STATUS" },
-  ];
+  const filtered = useMemo(() => {
+    let result = resources;
+    if (search) result = result.filter(r => r.name.toLowerCase().includes(search.toLowerCase()) || r.location.toLowerCase().includes(search.toLowerCase()));
+    if (typeFilter) result = result.filter(r => r.type === typeFilter);
+    if (statusFilter) result = result.filter(r => r.status === statusFilter);
+    return result;
+  }, [resources, search, typeFilter, statusFilter]);
+
+  const totalPages = Math.ceil(filtered.length / PER_PAGE);
+  const paged = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
+  const selected = resources.find(r => r.id === selectedId);
+
+  const stats = useMemo(() => ({
+    total: resources.length, inUse: resources.filter(r => r.status === "In Use").length,
+    available: resources.filter(r => r.status === "Available").length,
+    maintenance: resources.filter(r => r.status === "Maintenance").length,
+  }), [resources]);
+
+  const getNextBooking = (resId: string) => {
+    const next = appointments
+      .filter(a => a.resourceId === resId && (a.status === "confirmed" || a.status === "pending"))
+      .sort((a, b) => `${a.date}${a.startTime}`.localeCompare(`${b.date}${b.startTime}`))[0];
+    if (!next) return "No upcoming";
+    const client = clients.find(c => c.id === next.clientId);
+    const service = services.find(s => s.id === next.serviceId);
+    return `${next.date === "2024-05-15" ? "Today" : next.date}, ${formatTime12(next.startTime)} — ${service?.name || "Booking"} (${client?.name || ""})`;
+  };
 
   return (
     <div className="p-6 space-y-5 animate-fade-in-up">
-      {/* Page header */}
       <div>
         <h1 className="text-xl font-bold text-[#e0e0e0] tracking-tight">Resources</h1>
-        <p className="text-[13px] text-[#666] mt-1">Manage and monitor all booking resources.</p>
+        <p className="text-[13px] text-[#666] mt-1">Manage equipment, assets, and booking availability.</p>
       </div>
 
-      {/* Stat cards */}
-      <div className="grid grid-cols-4 gap-4">
-        <StatCard title="TOTAL RESOURCES" value="22" change="12 new this month" changeType="up" icon={Calendar} delay={0} />
-        <StatCard title="IN USE NOW" value="8" change="36% of total" changeType="neutral" icon={Activity} delay={0.05} />
-        <StatCard title="AVAILABLE" value="11" change="50% of total" changeType="neutral" icon={CheckCircle} delay={0.1} />
-        <StatCard title="MAINTENANCE" value="3" change="14% of total" changeType="down" icon={Wrench} delay={0.15} />
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        <StatCard title="Total Resources" value={String(stats.total)} change="12 new this month" changeType="up" icon={Calendar} delay={0} />
+        <StatCard title="In Use Now" value={String(stats.inUse)} change={`${Math.round(stats.inUse / stats.total * 100)}% of total`} changeType="neutral" icon={Activity} delay={0.06} />
+        <StatCard title="Available" value={String(stats.available)} change={`${Math.round(stats.available / stats.total * 100)}% of total`} changeType="up" icon={CheckCircle} delay={0.12} />
+        <StatCard title="Maintenance" value={String(stats.maintenance)} change={`${Math.round(stats.maintenance / stats.total * 100)}% of total`} changeType="neutral" icon={Wrench} delay={0.18} />
       </div>
 
-      {/* Filters row */}
       <div className="flex flex-wrap items-center gap-3">
-        {/* Search input */}
-        <div className="relative">
+        <div className="relative flex-1 min-w-[200px] max-w-xs">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#555]" />
-          <input
-            type="text"
-            placeholder="Search resources..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="premium-input pl-9 pr-4 py-2 rounded-lg w-64 text-[13px] text-[#e0e0e0] placeholder-[#555]
-              bg-gradient-to-b from-[#1e1e1e] to-[#161616] border border-[#d4af37]/10
-              focus:border-[#d4af37]/30 focus:outline-none transition-all"
-          />
+          <input type="text" placeholder="Search resources..." value={search} onChange={e => { setSearch(e.target.value); setPage(1); }}
+            className="w-full premium-input pl-9 pr-3 py-2 rounded-lg text-[13px] text-[#ccc] bg-[#0e0e0e] border border-[#d4af37]/10 placeholder:text-[#555]" />
         </div>
-
-        <FilterDropdown label="All Types" icon={Calendar} />
-        <FilterDropdown label="All Locations" icon={MapPin} />
-        <FilterDropdown label="All Status" icon={Activity} />
-
-        <PremiumButton variant="secondary" size="sm">
-          <Filter className="w-3.5 h-3.5" />
-          Filters
-        </PremiumButton>
-
+        <FilterDropdown label="All Types" options={types} value={typeFilter} onChange={v => { setTypeFilter(v); setPage(1); }} />
+        <FilterDropdown label="All Status" options={statuses} value={statusFilter} onChange={v => { setStatusFilter(v); setPage(1); }} />
+        <PremiumButton variant="secondary" size="sm"><Filter className="w-3.5 h-3.5" /> Filters</PremiumButton>
         <div className="ml-auto flex items-center gap-1 bg-[#0e0e0e] rounded-lg p-0.5 border border-[#d4af37]/8">
-          <button
-            onClick={() => setViewMode("list")}
-            className={cn(
-              "p-1.5 rounded-md transition-all cursor-pointer",
-              viewMode === "list"
-                ? "bg-gradient-to-b from-[#d4af37] via-[#c9a227] to-[#b8960b] text-[#0a0a0a]"
-                : "text-[#555] hover:text-[#999]"
-            )}
-          >
-            <List className="w-3.5 h-3.5" />
-          </button>
-          <button
-            onClick={() => setViewMode("grid")}
-            className={cn(
-              "p-1.5 rounded-md transition-all cursor-pointer",
-              viewMode === "grid"
-                ? "bg-gradient-to-b from-[#d4af37] via-[#c9a227] to-[#b8960b] text-[#0a0a0a]"
-                : "text-[#555] hover:text-[#999]"
-            )}
-          >
-            <LayoutGrid className="w-3.5 h-3.5" />
-          </button>
+          <button onClick={() => setViewMode("grid")} className={cn("p-1.5 rounded-md transition-all cursor-pointer", viewMode === "grid" ? "bg-gradient-to-b from-[#d4af37] to-[#b8960b] text-[#0a0a0a]" : "text-[#555] hover:text-[#999]")}>
+            <LayoutGrid className="w-3.5 h-3.5" /></button>
+          <button onClick={() => setViewMode("list")} className={cn("p-1.5 rounded-md transition-all cursor-pointer", viewMode === "list" ? "bg-gradient-to-b from-[#d4af37] to-[#b8960b] text-[#0a0a0a]" : "text-[#555] hover:text-[#999]")}>
+            <List className="w-3.5 h-3.5" /></button>
         </div>
       </div>
 
-      {/* Main content: table + detail panel */}
       <div className="flex gap-5 min-h-[460px]">
         <div className={cn("flex-1 min-w-0", selectedId && "max-w-[calc(100%-360px)]")}>
           <div className="premium-panel rounded-xl overflow-hidden">
-            {/* Table */}
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-[#d4af37]/8">
-                    {columns.map((col) => (
-                      <th key={col.key} className="px-4 py-3 text-left">
-                        {col.sortable ? (
-                          <button className="flex items-center gap-1.5 text-[10px] font-bold text-[#555] uppercase tracking-widest hover:text-[#d4af37] transition-colors cursor-pointer">
-                            {col.label}
-                            <ArrowUpDown className="w-3 h-3 text-[#333]" />
-                          </button>
-                        ) : (
-                          <span className="text-[10px] font-bold text-[#555] uppercase tracking-widest">{col.label}</span>
-                        )}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {paged.map((row, i) => (
-                    <motion.tr
-                      key={row.id}
-                      initial={{ opacity: 0, y: 6 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.25, delay: i * 0.03 }}
-                      onClick={() => setSelectedId(row.id === selectedId ? null : row.id)}
-                      className={cn(
-                        "border-b border-[#d4af37]/5 last:border-b-0 transition-all cursor-pointer group/row",
-                        selectedId === row.id
-                          ? "bg-[#d4af37]/5 border-l-2 border-l-[#d4af37]"
-                          : "hover:bg-[#161616]/50 border-l-2 border-l-transparent"
-                      )}
-                    >
-                      {/* RESOURCE */}
-                      <td className="px-4 py-3.5">
-                        <div className="text-[13px] text-[#e0e0e0] font-medium">{row.name}</div>
-                        <div className="text-[10px] text-[#555]">{row.code}</div>
-                      </td>
-                      {/* TYPE */}
-                      <td className="px-4 py-3.5">
-                        <TypeBadge type={row.type} />
-                      </td>
-                      {/* LOCATION */}
-                      <td className="px-4 py-3.5">
-                        <span className="text-[13px] text-[#999]">{row.location}</span>
-                      </td>
-                      {/* AVAILABILITY */}
-                      <td className="px-4 py-3.5">
-                        <span className={cn(
-                          "text-[12px] font-medium",
-                          row.status === "available" && "text-emerald-400",
-                          row.status === "in-use" && "text-blue-400",
-                          row.status === "maintenance" && "text-red-400"
-                        )}>
-                          {row.availability}
-                        </span>
-                      </td>
-                      {/* NEXT BOOKING */}
-                      <td className="px-4 py-3.5">
-                        <span className={cn(
-                          "text-[12px]",
-                          row.nextBooking === "No upcoming" ? "text-[#555]" : "text-[#ccc]"
-                        )}>
-                          {row.nextBooking}
-                        </span>
-                      </td>
-                      {/* CAPACITY */}
-                      <td className="px-4 py-3.5">
-                        <span className={cn(
-                          "text-[13px] tabular-nums",
-                          row.capacity === "N/A" ? "text-[#555]" : "text-[#999]"
-                        )}>
-                          {row.capacity}
-                        </span>
-                      </td>
-                      {/* STATUS */}
-                      <td className="px-4 py-3.5">
-                        <ResourceStatusBadge status={row.status} />
-                      </td>
-                    </motion.tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Pagination */}
-            <div className="px-5 pb-4">
-              <Pagination current={page} total={22} onChange={setPage} />
+            {viewMode === "list" ? (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-[#d4af37]/8">
+                      {[{ key: "name", label: "RESOURCE" }, { key: "type", label: "TYPE" }, { key: "location", label: "LOCATION" },
+                        { key: "availability", label: "AVAILABILITY" }, { key: "next", label: "NEXT BOOKING" }, { key: "capacity", label: "CAPACITY" },
+                        { key: "status", label: "STATUS" }, { key: "action", label: "" }].map(col => (
+                          <th key={col.key} className="px-4 py-3 text-left">
+                            {col.key === "name" ? (
+                              <button className="flex items-center gap-1.5 text-[10px] font-bold text-[#555] uppercase tracking-widest hover:text-[#d4af37] cursor-pointer">
+                                {col.label} <ArrowUpDown className="w-3 h-3 text-[#333]" /></button>
+                            ) : (
+                              <span className="text-[10px] font-bold text-[#555] uppercase tracking-widest">{col.label}</span>
+                            )}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {paged.map((row, i) => {
+                        const Icon = RES_ICONS[row.type] || Calendar;
+                        const st = STATUS_MAP[row.status] || STATUS_MAP["Available"];
+                        return (
+                          <motion.tr key={row.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.25, delay: i * 0.03 }}
+                            onClick={() => setSelectedId(row.id === selectedId ? null : row.id)}
+                            className={cn("border-b border-[#d4af37]/5 last:border-b-0 transition-all cursor-pointer group/row",
+                              selectedId === row.id ? "bg-[#d4af37]/5 border-l-2 border-l-[#d4af37]" : "hover:bg-[#161616]/50 border-l-2 border-l-transparent")}>
+                            <td className="px-4 py-3.5">
+                              <div className="flex items-center gap-2.5">
+                                <div className="w-8 h-8 rounded-lg bg-[#d4af37]/8 border border-[#d4af37]/12 flex items-center justify-center flex-shrink-0">
+                                  <Icon className="w-4 h-4 text-[#d4af37]" /></div>
+                                <div>
+                                  <div className="text-[13px] text-[#ccc] font-medium">{row.name}</div>
+                                  <div className="text-[10px] text-[#555]">{row.code}</div>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3.5"><span className={cn("inline-flex px-2 py-0.5 rounded text-[10px] font-medium border", TYPE_COLORS[row.type] || TYPE_COLORS["Equipment"])}>{row.type}</span></td>
+                            <td className="px-4 py-3.5"><div className="text-[13px] text-[#888]">{row.location}</div></td>
+                            <td className="px-4 py-3.5">
+                              <div className="flex items-center gap-1.5"><div className={cn("w-1.5 h-1.5 rounded-full", st.dot)} /><span className="text-[13px] text-[#ccc]">{st.label}</span></div>
+                            </td>
+                            <td className="px-4 py-3.5"><div className="text-[11px] text-[#666] max-w-[200px] truncate">{getNextBooking(row.id)}</div></td>
+                            <td className="px-4 py-3.5"><div className="text-[13px] text-[#888]">{row.capacity || "N/A"}</div></td>
+                            <td className="px-4 py-3.5"><span className={cn("inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium border", st.badge)}><div className={cn("w-1.5 h-1.5 rounded-full", st.dot)} />{st.label}</span></td>
+                            <td className="px-4 py-3.5">
+                              <div className="w-7 h-7 rounded-md flex items-center justify-center text-[#555] hover:text-[#d4af37] hover:bg-[#1e1e1e] transition-all opacity-0 group-hover/row:opacity-100">
+                                <ChevronRight className="w-4 h-4" /></div>
+                            </td>
+                          </motion.tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-3 p-4">
+                  {paged.map((row, i) => {
+                    const Icon = RES_ICONS[row.type] || Calendar;
+                    const st = STATUS_MAP[row.status] || STATUS_MAP["Available"];
+                    return (
+                      <motion.div key={row.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.25, delay: i * 0.04 }}
+                        onClick={() => setSelectedId(row.id)}
+                        className={cn("p-4 rounded-lg border cursor-pointer transition-all",
+                          selectedId === row.id ? "bg-[#d4af37]/5 border-[#d4af37]/20" : "bg-[#0e0e0e] border-[#d4af37]/6 hover:border-[#d4af37]/15")}>
+                        <div className="flex items-center gap-3 mb-3">
+                          <div className="w-10 h-10 rounded-lg bg-[#d4af37]/8 border border-[#d4af37]/12 flex items-center justify-center">
+                            <Icon className="w-5 h-5 text-[#d4af37]" /></div>
+                          <div>
+                            <div className="text-[13px] text-[#e0e0e0] font-medium">{row.name}</div>
+                            <div className="text-[10px] text-[#555]">{row.code}</div>
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className={cn("inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-medium border", st.badge)}>
+                            <div className={cn("w-1.5 h-1.5 rounded-full", st.dot)} />{st.label}</span>
+                          <span className="text-[11px] text-[#555]">{row.capacity ? `${row.capacity} cap` : "—"}</span>
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+              )}
+              <div className="px-5 pb-4"><Pagination current={page} total={filtered.length} onChange={setPage} /></div>
             </div>
           </div>
         </div>
-
-        {/* Detail panel */}
         <AnimatePresence>
-          {selectedId && selected && (
-            <ResourceDetailPanel resource={selected} onClose={() => setSelectedId(null)} />
-          )}
+          {selectedId && selected && <ResourceDetailPanel resource={selected} onClose={() => setSelectedId(null)} />}
         </AnimatePresence>
       </div>
     </div>

@@ -1,13 +1,4 @@
-import { PrismaClient } from '@prisma/client'
-
-const globalForPrisma = globalThis as unknown as {
-  prisma: PrismaClient | undefined
-}
-
-export const db =
-  globalForPrisma.prisma ??
-  new PrismaClient({
-    log: ['query'],
-  })
-
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = db
+// Legacy Prisma DB file — not used.
+// The app now uses Zustand client-side state (see @/lib/store).
+// This file is kept to avoid breaking any imports.
+export const db = null;

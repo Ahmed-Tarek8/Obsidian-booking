@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import { motion } from "framer-motion";
 import {
   CalendarDays,
@@ -18,15 +19,26 @@ import {
   Target,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useBookingStore, formatTime12, formatCurrency, getDurationMinutes } from "@/lib/store";
 import { StatCard } from "./StatCard";
 import { StatusChip } from "./StatusChip";
 import { PremiumButton } from "./PremiumButton";
 import { SectionPanel } from "./SectionPanel";
 
+/* ─── Constants ─── */
+
+const TODAY = "2024-05-15";
+const WEEK_START = "2024-05-13";
+const WEEK_END = "2024-05-17";
+const WEEK_DAYS = ["2024-05-13", "2024-05-14", "2024-05-15", "2024-05-16", "2024-05-17"];
+const EXCLUDED_STATUSES: string[] = ["cancelled", "no-show"];
+const DONUT_COLORS = ["#d4af37", "#4a4a4a", "#333333", "#1e1e1e", "#2a2a2a"];
+
 /* ─── SVG Charts ─── */
 
-function RevenueTrendChart() {
-  const points = [22, 35, 18, 50, 42, 30, 25]; // Mon-Sun as % of max
+function RevenueTrendChart({ dailyRevenue }: { dailyRevenue: number[] }) {
+  const max = Math.max(...dailyRevenue, 1);
+  const points = dailyRevenue.map((v) => (v / max) * 100);
   const w = 100;
   const h = 40;
   const pathD = points
@@ -37,6 +49,11 @@ function RevenueTrendChart() {
     })
     .join(" ");
   const areaD = pathD + ` L ${w} ${h} L 0 ${h} Z`;
+
+  // Highlight the peak index
+  const peakIndex = points.indexOf(Math.max(...points));
+  const peakX = (peakIndex / (points.length - 1)) * w;
+  const peakY = h - (points[peakIndex] / 100) * h;
 
   return (
     <svg viewBox={`0 0 ${w} ${h}`} className="w-full h-32" preserveAspectRatio="none">
@@ -62,23 +79,13 @@ function RevenueTrendChart() {
           </g>
         );
       })}
-      {/* Highlight Thursday peak */}
-      {(() => {
-        const x = (3 / (points.length - 1)) * w;
-        const y = h - (points[3] / 100) * h;
-        return <circle cx={x} cy={y} r="3" fill="#d4af37" />;
-      })()}
+      {/* Highlight peak */}
+      <circle cx={peakX} cy={peakY} r="3" fill="#d4af37" />
     </svg>
   );
 }
 
-function DonutChart() {
-  const data = [
-    { value: 44.8, color: "#d4af37" },
-    { value: 27.4, color: "#4a4a4a" },
-    { value: 17.8, color: "#333333" },
-    { value: 10.0, color: "#1e1e1e" },
-  ];
+function DonutChart({ segments, totalRevenue }: { segments: { label: string; pct: number; amount: number; color: string }[]; totalRevenue: number }) {
   const r = 36;
   const cx = 50;
   const cy = 50;
@@ -87,9 +94,9 @@ function DonutChart() {
 
   return (
     <svg viewBox="0 0 100 100" className="w-28 h-28 flex-shrink-0">
-      {data.map((seg, i) => {
-        const segLength = (seg.value / 100) * circumference;
-        const gap = i < data.length - 1 ? 2 : 0;
+      {segments.map((seg, i) => {
+        const segLength = (seg.pct / 100) * circumference;
+        const gap = i < segments.length - 1 ? 2 : 0;
         const el = (
           <circle
             key={i}
@@ -108,7 +115,7 @@ function DonutChart() {
         offset += segLength;
         return el;
       })}
-      <text x={cx} y={cy - 2} textAnchor="middle" fill="#e0e0e0" fontSize="10" fontWeight="700" fontFamily="sans-serif">$4,820</text>
+      <text x={cx} y={cy - 2} textAnchor="middle" fill="#e0e0e0" fontSize="10" fontWeight="700" fontFamily="sans-serif">{formatCurrency(totalRevenue)}</text>
       <text x={cx} y={cy + 8} textAnchor="middle" fill="#666" fontSize="5" fontFamily="sans-serif">THIS WEEK</text>
     </svg>
   );
@@ -131,7 +138,7 @@ function GaugeChart({ value }: { value: number }) {
         strokeDashoffset={circumference * 0.25}
         transform={`rotate(-90 ${cx} ${cy})`}
       />
-      <text x={cx} y={cy - 2} textAnchor="middle" fill="#e0e0e0" fontSize="16" fontWeight="700" fontFamily="sans-serif">68%</text>
+      <text x={cx} y={cy - 2} textAnchor="middle" fill="#e0e0e0" fontSize="16" fontWeight="700" fontFamily="sans-serif">{Math.round(value)}%</text>
       <text x={cx} y={cy + 10} textAnchor="middle" fill="#666" fontSize="5" fontFamily="sans-serif">RETURNING CLIENT RATE</text>
     </svg>
   );
@@ -176,7 +183,7 @@ function UpcomingItem({ time, client, isVip, service, duration, location, status
 
 /* ─── Staff ranking item ─── */
 
-function StaffRankItem({ rank, initials, revenue, services }: { rank: number; initials: string; revenue: string; services: number }) {
+function StaffRankItem({ rank, initials, name, revenue, services }: { rank: number; initials: string; name: string; revenue: string; services: number }) {
   const medals = ["text-[#d4af37]", "text-[#c0c0c0]", "text-[#cd7f32]", "text-[#555]"];
   return (
     <div className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-[#161616]/50 transition-colors cursor-pointer">
@@ -185,7 +192,7 @@ function StaffRankItem({ rank, initials, revenue, services }: { rank: number; in
         <span className="text-[10px] font-bold text-[#d4af37]">{initials}</span>
       </div>
       <div className="flex-1">
-        <div className="text-[13px] text-[#ccc] font-medium">Staff {initials}</div>
+        <div className="text-[13px] text-[#ccc] font-medium">{name}</div>
         <div className="text-[10px] text-[#555]">{services} services</div>
       </div>
       <span className="text-[13px] font-semibold text-[#e0e0e0] tabular-nums">{revenue}</span>
@@ -196,13 +203,155 @@ function StaffRankItem({ rank, initials, revenue, services }: { rank: number; in
 /* ─── Main Dashboard ─── */
 
 export function DashboardView() {
+  const { services, staff, clients, appointments, waitingList, getClient, getService, getStaff, getResource } = useBookingStore();
+
+  // ── Derived data ──
+
+  const todayAppts = useMemo(
+    () => appointments.filter((a) => a.date === TODAY && !EXCLUDED_STATUSES.includes(a.status)),
+    [appointments],
+  );
+
+  const weekAppts = useMemo(
+    () => appointments.filter((a) => a.date >= WEEK_START && a.date <= WEEK_END && !EXCLUDED_STATUSES.includes(a.status)),
+    [appointments],
+  );
+
+  const todayRevenue = useMemo(
+    () => todayAppts.reduce((sum, a) => sum + (getService(a.serviceId)?.price ?? 0), 0),
+    [todayAppts, services],
+  );
+
+  const weekRevenue = useMemo(
+    () => weekAppts.reduce((sum, a) => sum + (getService(a.serviceId)?.price ?? 0), 0),
+    [weekAppts, services],
+  );
+
+  const newClientsCount = useMemo(
+    () => clients.filter((c) => c.status === "Active" && c.totalBookings <= 3).length,
+    [clients],
+  );
+
+  const todayApptCount = todayAppts.length;
+
+  // Daily revenue for the week (May 13-17)
+  const dailyRevenue = useMemo(
+    () =>
+      WEEK_DAYS.map((day) =>
+        appointments
+          .filter((a) => a.date === day && !EXCLUDED_STATUSES.includes(a.status))
+          .reduce((sum, a) => sum + (getService(a.serviceId)?.price ?? 0), 0),
+      ),
+    [appointments, services],
+  );
+
+  // Service Mix — aggregate from services[].bookings
+  const serviceMix = useMemo(() => {
+    const totalBookings = services.reduce((s, svc) => s + svc.bookings, 0);
+    const sorted = [...services].sort((a, b) => b.bookings - a.bookings);
+    const top4 = sorted.slice(0, 4);
+    const otherBookings = sorted.slice(4).reduce((s, svc) => s + svc.bookings, 0);
+
+    const segments = top4.map((svc) => ({
+      label: svc.name,
+      pct: totalBookings > 0 ? (svc.bookings / totalBookings) * 100 : 0,
+      amount: weekRevenue > 0 ? Math.round((svc.bookings / totalBookings) * weekRevenue) : 0,
+      color: DONUT_COLORS[top4.indexOf(svc)],
+    }));
+
+    if (otherBookings > 0) {
+      segments.push({
+        label: "Other Services",
+        pct: totalBookings > 0 ? (otherBookings / totalBookings) * 100 : 0,
+        amount: weekRevenue > 0 ? Math.round((otherBookings / totalBookings) * weekRevenue) : 0,
+        color: DONUT_COLORS[4],
+      });
+    }
+
+    return segments;
+  }, [services, weekRevenue]);
+
+  // Returning clients rate
+  const returningRate = useMemo(() => {
+    const total = clients.length;
+    if (total === 0) return 0;
+    const returning = clients.filter((c) => c.totalBookings > 1).length;
+    return (returning / total) * 100;
+  }, [clients]);
+
+  const returningCount = useMemo(() => clients.filter((c) => c.totalBookings > 1).length, [clients]);
+  const newClientsTotal = clients.length - returningCount;
+
+  // Upcoming bookings — next 4 confirmed/pending sorted by date+startTime
+  const upcomingBookings = useMemo(() => {
+    return appointments
+      .filter((a) => (a.status === "confirmed" || a.status === "pending"))
+      .sort((a, b) => {
+        const dateComp = a.date.localeCompare(b.date);
+        return dateComp !== 0 ? dateComp : a.startTime.localeCompare(b.startTime);
+      })
+      .slice(0, 4)
+      .map((a) => {
+        const client = getClient(a.clientId);
+        const service = getService(a.serviceId);
+        const resource = getResource(a.resourceId);
+        const durationMins = getDurationMinutes(a.startTime, a.endTime);
+        return {
+          time: formatTime12(a.startTime),
+          client: client?.name ?? "Unknown",
+          isVip: client?.tier === "VIP",
+          service: service?.name ?? "Unknown",
+          duration: `${durationMins} min`,
+          location: resource?.name ?? "—",
+          status: a.status as "confirmed" | "pending" | "completed",
+        };
+      });
+  }, [appointments, getClient, getService, getResource]);
+
+  // Top staff ranked by revenueMTD, with appointment count for this week
+  const topStaff = useMemo(() => {
+    const ranked = [...staff]
+      .sort((a, b) => b.revenueMTD - a.revenueMTD)
+      .slice(0, 4);
+
+    return ranked.map((s, i) => {
+      const apptCount = weekAppts.filter((a) => a.staffId === s.id).length;
+      return {
+        rank: i + 1,
+        initials: s.initials,
+        name: s.name,
+        revenue: formatCurrency(s.revenueMTD),
+        services: apptCount,
+      };
+    });
+  }, [staff, weekAppts]);
+
+  // Today at a Glance
+  const todayTotalMins = useMemo(
+    () => todayAppts.reduce((sum, a) => sum + getDurationMinutes(a.startTime, a.endTime), 0),
+    [todayAppts],
+  );
+
+  const avgTicket = todayApptCount > 0 ? Math.round(todayRevenue / todayApptCount) : 0;
+  const waitingListCount = waitingList.length;
+
+  // Hrs remaining: per-staff average remaining business hours today
+  const hrsRemaining = useMemo(() => {
+    if (staff.length === 0) return 0;
+    const avgBookedPerStaff = todayTotalMins / staff.length / 60;
+    return Math.max(0, 9 - avgBookedPerStaff).toFixed(1);
+  }, [todayTotalMins, staff.length]);
+
+  // MTD revenue sum
+  const mtdRevenue = useMemo(() => staff.reduce((sum, s) => sum + s.revenueMTD, 0), [staff]);
+
   return (
     <div className="p-6 space-y-5 animate-fade-in-up">
       {/* Stat cards row */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        <StatCard title="Today's Appointments" value="12" change="+3 vs yesterday" changeType="up" icon={CalendarDays} delay={0} />
-        <StatCard title="Week Revenue" value="$4,820" change="+12.5%" changeType="up" icon={DollarSign} delay={0.06} />
-        <StatCard title="New Clients" value="8" change="+2 this week" changeType="up" icon={UserPlus} delay={0.12} />
+        <StatCard title="Today's Appointments" value={String(todayApptCount)} change="+3 vs yesterday" changeType="up" icon={CalendarDays} delay={0} />
+        <StatCard title="Week Revenue" value={formatCurrency(weekRevenue)} change="+12.5%" changeType="up" icon={DollarSign} delay={0.06} />
+        <StatCard title="New Clients" value={String(newClientsCount)} change="+2 this week" changeType="up" icon={UserPlus} delay={0.12} />
         <StatCard title="Utilization" value="87%" change="+5% vs last week" changeType="up" icon={Activity} delay={0.18} />
       </div>
 
@@ -220,14 +369,14 @@ export function DashboardView() {
             </button>
           </div>
           <div className="flex items-baseline gap-2 mb-3">
-            <span className="text-2xl font-bold text-[#e0e0e0]">$18,745</span>
+            <span className="text-2xl font-bold text-[#e0e0e0]">{formatCurrency(weekRevenue)}</span>
             <span className="text-[11px] text-[#666]">This Week</span>
           </div>
-          <RevenueTrendChart />
+          <RevenueTrendChart dailyRevenue={dailyRevenue} />
           <div className="grid grid-cols-3 gap-2 mt-4">
-            <MiniStat label="Month to Date" value="$70,320" trend="+9.8%" />
-            <MiniStat label="Year to Date" value="$276,890" trend="+14.6%" />
-            <MiniStat label="Avg. Ticket" value="$387" trend="+4.3%" />
+            <MiniStat label="Month to Date" value={formatCurrency(mtdRevenue)} trend="+9.8%" />
+            <MiniStat label="Year to Date" value={formatCurrency(mtdRevenue * 3)} trend="+14.6%" />
+            <MiniStat label="Avg. Ticket" value={formatCurrency(avgTicket)} trend="+4.3%" />
           </div>
         </SectionPanel>
 
@@ -240,19 +389,19 @@ export function DashboardView() {
             </div>
           </div>
           <div className="flex items-center gap-5">
-            <DonutChart />
+            <DonutChart segments={serviceMix} totalRevenue={weekRevenue} />
             <div className="flex-1 space-y-2.5">
-              {[
-                { label: "Strategy Session", pct: "44.8%", amount: "$2,160", color: "bg-[#d4af37]" },
-                { label: "Team Workshop", pct: "27.4%", amount: "$1,320", color: "bg-[#4a4a4a]" },
-                { label: "Full Consultation", pct: "17.8%", amount: "$860", color: "bg-[#333]" },
-                { label: "Other Services", pct: "10.0%", amount: "$480", color: "bg-[#1e1e1e] border border-white/10" },
-              ].map((item) => (
+              {serviceMix.slice(0, 4).map((item, idx) => (
                 <div key={item.label} className="flex items-center gap-2">
-                  <div className={cn("w-2 h-2 rounded-full flex-shrink-0", item.color)} />
+                  <div
+                    className={cn(
+                      "w-2 h-2 rounded-full flex-shrink-0",
+                      idx === 3 ? "bg-[#1e1e1e] border border-white/10" : item.color === "#d4af37" ? "bg-[#d4af37]" : item.color === "#4a4a4a" ? "bg-[#4a4a4a]" : "bg-[#333]",
+                    )}
+                  />
                   <div className="flex-1 min-w-0">
                     <div className="text-[11px] text-[#ccc] font-medium">{item.label}</div>
-                    <div className="text-[9px] text-[#555] tabular-nums">{item.amount} ({item.pct})</div>
+                    <div className="text-[9px] text-[#555] tabular-nums">{formatCurrency(item.amount)} ({item.pct.toFixed(1)}%)</div>
                   </div>
                 </div>
               ))}
@@ -271,11 +420,11 @@ export function DashboardView() {
               <Info className="w-3 h-3 text-[#555]" />
             </div>
           </div>
-          <GaugeChart value={68} />
+          <GaugeChart value={returningRate} />
           <p className="text-[10px] text-emerald-400 font-medium text-center mt-1">+6% vs last week</p>
           <div className="grid grid-cols-2 gap-2 mt-4">
-            <MiniStat label="Returning" value="142" />
-            <MiniStat label="New Clients" value="68" />
+            <MiniStat label="Returning" value={String(returningCount)} />
+            <MiniStat label="New Clients" value={String(newClientsTotal)} />
           </div>
         </SectionPanel>
       </div>
@@ -289,10 +438,18 @@ export function DashboardView() {
             <PremiumButton variant="ghost" size="sm" className="!text-[11px] !py-1 !px-2">View All</PremiumButton>
           </div>
           <div className="space-y-0.5">
-            <UpcomingItem time="9:00 AM" client="Investor A" isVip service="Strategy Session" duration="60 min" location="Suite 1, Room 1" status="confirmed" />
-            <UpcomingItem time="10:00 AM" client="Client 05" isVip={false} service="Portfolio Review" duration="60 min" location="Suite A, Room 2" status="confirmed" />
-            <UpcomingItem time="11:00 AM" client="Client 07" isVip service="Team Workshop" duration="45 min" location="Suite A, Room 3" status="confirmed" />
-            <UpcomingItem time="1:00 PM" client="Client 03" isVip={false} service="Full Consultation" duration="60 min" location="Suite B, Room 1" status="pending" />
+            {upcomingBookings.map((b, i) => (
+              <UpcomingItem
+                key={i}
+                time={b.time}
+                client={b.client}
+                isVip={b.isVip}
+                service={b.service}
+                duration={b.duration}
+                location={b.location}
+                status={b.status}
+              />
+            ))}
           </div>
         </SectionPanel>
 
@@ -303,10 +460,16 @@ export function DashboardView() {
             <PremiumButton variant="ghost" size="sm" className="!text-[11px] !py-1 !px-2">View All</PremiumButton>
           </div>
           <div className="space-y-1">
-            <StaffRankItem rank={1} initials="SC" revenue="$2,180" services={18} />
-            <StaffRankItem rank={2} initials="SA" revenue="$1,540" services={14} />
-            <StaffRankItem rank={3} initials="SB" revenue="$1,100" services={10} />
-            <StaffRankItem rank={4} initials="SD" revenue="$980" services={8} />
+            {topStaff.map((s) => (
+              <StaffRankItem
+                key={s.rank}
+                rank={s.rank}
+                initials={s.initials}
+                name={s.name}
+                revenue={s.revenue}
+                services={s.services}
+              />
+            ))}
           </div>
         </SectionPanel>
 
@@ -317,7 +480,7 @@ export function DashboardView() {
             <div className="bg-[#0e0e0e] rounded-lg p-3 border border-[#d4af37]/6 flex items-center gap-2.5">
               <CalendarDays className="w-4 h-4 text-[#d4af37]/60 flex-shrink-0" />
               <div>
-                <div className="text-sm font-bold text-[#e0e0e0]">12</div>
+                <div className="text-sm font-bold text-[#e0e0e0]">{todayApptCount}</div>
                 <div className="text-[9px] text-[#555] uppercase tracking-wider">Appointments</div>
               </div>
             </div>
@@ -331,7 +494,7 @@ export function DashboardView() {
             <div className="bg-[#0e0e0e] rounded-lg p-3 border border-[#d4af37]/6 flex items-center gap-2.5">
               <DollarSign className="w-4 h-4 text-[#d4af37]/60 flex-shrink-0" />
               <div>
-                <div className="text-sm font-bold text-[#e0e0e0]">$2,460</div>
+                <div className="text-sm font-bold text-[#e0e0e0]">{formatCurrency(todayRevenue)}</div>
                 <div className="text-[9px] text-[#555] uppercase tracking-wider">Projected Rev.</div>
               </div>
             </div>
@@ -344,9 +507,9 @@ export function DashboardView() {
             </div>
           </div>
           <div className="grid grid-cols-3 gap-2 mb-3">
-            <MiniStat label="Hrs Remaining" value="4.3" />
-            <MiniStat label="Waiting List" value="2" />
-            <MiniStat label="Avg. Ticket" value="$410" />
+            <MiniStat label="Hrs Remaining" value={hrsRemaining} />
+            <MiniStat label="Waiting List" value={String(waitingListCount)} />
+            <MiniStat label="Avg. Ticket" value={formatCurrency(avgTicket)} />
           </div>
           {/* Goal indicator */}
           <div className="flex items-center justify-between bg-emerald-500/5 border border-emerald-500/10 rounded-lg px-3 py-2.5">
