@@ -14,8 +14,6 @@ import {
   ChevronDown,
 } from "lucide-react";
 import {
-  AreaChart,
-  Area,
   BarChart,
   Bar,
   PieChart,
@@ -26,6 +24,7 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
+  Legend,
 } from "recharts";
 import { StatCard } from "./StatCard";
 import { PremiumButton } from "./PremiumButton";
@@ -34,14 +33,14 @@ import { cn } from "@/lib/utils";
 
 /* ─── Data ─────────────────────────────────────────────────────────────── */
 
-const revenueData = [
-  { day: "May 6", revenue: 3240 },
-  { day: "May 7", revenue: 2890 },
-  { day: "May 8", revenue: 4120 },
-  { day: "May 9", revenue: 4520 },
-  { day: "May 10", revenue: 3780 },
-  { day: "May 11", revenue: 3350 },
-  { day: "May 12", revenue: 2930 },
+const bookingVsCancelData = [
+  { day: "May 6", bookings: 42, cancellations: 1, noShows: 2 },
+  { day: "May 7", bookings: 38, cancellations: 2, noShows: 1 },
+  { day: "May 8", bookings: 58, cancellations: 3, noShows: 2 },
+  { day: "May 9", bookings: 65, cancellations: 1, noShows: 3 },
+  { day: "May 10", bookings: 52, cancellations: 4, noShows: 1 },
+  { day: "May 11", bookings: 48, cancellations: 2, noShows: 2 },
+  { day: "May 12", bookings: 39, cancellations: 1, noShows: 1 },
 ];
 
 const bookingsByDayData = [
@@ -260,34 +259,14 @@ export function AnalyticsPage() {
 
       {/* ── Charts Row ─────────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        {/* Revenue Trend */}
+        {/* Bookings vs Cancellations */}
         <SectionPanel>
-          <SectionTitle title="Revenue Trend" dropdownLabel="Daily" />
+          <SectionTitle title="Bookings vs Issues" dropdownLabel="Daily" />
           <div className="text-[10px] text-[#555] uppercase tracking-wider mb-2">
-            Revenue (USD)
+            Bookings / Cancellations / No-Shows
           </div>
           <ResponsiveContainer width="100%" height={240}>
-            <AreaChart data={revenueData}>
-              <defs>
-                <linearGradient
-                  id="goldGradient"
-                  x1="0"
-                  y1="0"
-                  x2="0"
-                  y2="1"
-                >
-                  <stop
-                    offset="5%"
-                    stopColor="#d4af37"
-                    stopOpacity={0.3}
-                  />
-                  <stop
-                    offset="95%"
-                    stopColor="#d4af37"
-                    stopOpacity={0}
-                  />
-                </linearGradient>
-              </defs>
+            <BarChart data={bookingVsCancelData} barGap={2} barCategoryGap="20%">
               <CartesianGrid
                 strokeDasharray="3 3"
                 stroke="rgba(212,175,55,0.06)"
@@ -302,27 +281,20 @@ export function AnalyticsPage() {
                 tick={{ fill: "#666", fontSize: 11 }}
                 axisLine={{ stroke: "rgba(212,175,55,0.1)" }}
                 tickLine={false}
-                domain={[0, 6000]}
-                tickFormatter={(v: number) =>
-                  v >= 1000 ? `$${v / 1000}K` : `$${v}`
-                }
               />
               <Tooltip
                 contentStyle={tooltipStyle}
                 labelStyle={tooltipLabelStyle}
-                formatter={(value: number) => [
-                  `$${value.toLocaleString()}`,
-                  "Revenue",
-                ]}
               />
-              <Area
-                type="monotone"
-                dataKey="revenue"
-                stroke="#d4af37"
-                fill="url(#goldGradient)"
-                strokeWidth={2}
+              <Legend
+                wrapperStyle={{ fontSize: "11px", color: "#888", paddingTop: "8px" }}
+                iconType="circle"
+                iconSize={8}
               />
-            </AreaChart>
+              <Bar dataKey="bookings" name="Bookings" fill="#d4af37" radius={[3, 3, 0, 0]} />
+              <Bar dataKey="cancellations" name="Cancellations" fill="#EF4444" radius={[3, 3, 0, 0]} />
+              <Bar dataKey="noShows" name="No-Shows" fill="#F97316" radius={[3, 3, 0, 0]} />
+            </BarChart>
           </ResponsiveContainer>
         </SectionPanel>
 
