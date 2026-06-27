@@ -11,6 +11,11 @@ import { ClientsPage } from "@/components/dashboard/ClientsPage";
 import { ServicesPage } from "@/components/dashboard/ServicesPage";
 import { StaffPage } from "@/components/dashboard/StaffPage";
 import { WaitingListPage } from "@/components/dashboard/WaitingListPage";
+import { ResourcesPage } from "@/components/dashboard/ResourcesPage";
+import { AnalyticsPage } from "@/components/dashboard/AnalyticsPage";
+import { ReportsPage } from "@/components/dashboard/ReportsPage";
+import { SettingsPage } from "@/components/dashboard/SettingsPage";
+import { IntegrationsPage } from "@/components/dashboard/IntegrationsPage";
 
 const pageTransition = {
   initial: { opacity: 0, y: 8 },
@@ -60,6 +65,36 @@ export default function DashboardPage() {
         return (
           <motion.div key="staff" {...pageTransition}>
             <StaffPage />
+          </motion.div>
+        );
+      case "resources":
+        return (
+          <motion.div key="resources" {...pageTransition}>
+            <ResourcesPage />
+          </motion.div>
+        );
+      case "analytics":
+        return (
+          <motion.div key="analytics" {...pageTransition}>
+            <AnalyticsPage />
+          </motion.div>
+        );
+      case "reports":
+        return (
+          <motion.div key="reports" {...pageTransition}>
+            <ReportsPage />
+          </motion.div>
+        );
+      case "settings":
+        return (
+          <motion.div key="settings" {...pageTransition}>
+            <SettingsPage />
+          </motion.div>
+        );
+      case "integrations":
+        return (
+          <motion.div key="integrations" {...pageTransition}>
+            <IntegrationsPage />
           </motion.div>
         );
       default:
