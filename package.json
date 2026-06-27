@@ -3,8 +3,8 @@
   "version": "0.2.0",
   "private": true,
   "scripts": {
-    "dev": "next dev -p 3000",
-    "build": "next build",
+    "dev": "node scripts/fix-resources.cjs && next dev -p 3000",
+    "build": "node scripts/fix-resources.cjs && next build",
     "start": "next start -p 3000",
     "lint": "eslint .",
     "fix:resources": "node scripts/fix-resources.cjs"
