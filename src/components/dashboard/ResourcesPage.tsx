@@ -521,12 +521,12 @@ export function ResourcesPage() {
                 </div>
               )}
               <div className="px-5 pb-4"><Pagination current={page} total={filtered.length} onChange={setPage} /></div>
+            </div>
           </div>
+          <AnimatePresence>
+            {selectedId && selected && <ResourceDetailPanel resource={selected} onClose={() => setSelectedId(null)} />}
+          </AnimatePresence>
         </div>
-        <AnimatePresence>
-          {selectedId && selected && <ResourceDetailPanel resource={selected} onClose={() => setSelectedId(null)} />}
-        </AnimatePresence>
       </div>
-    </div>
-  );
-}
+    );
+  }
