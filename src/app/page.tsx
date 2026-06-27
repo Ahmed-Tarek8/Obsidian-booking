@@ -83,6 +83,7 @@ export default function AppPage() {
         onNavChange={setActiveNav}
         collapsed={sidebarCollapsed}
         onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
+        onOpenPublicPage={() => setMode("public")}
       />
 
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">

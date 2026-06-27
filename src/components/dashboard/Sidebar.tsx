@@ -9,6 +9,7 @@ import {
   Users,
   Layers,
   Settings,
+  Globe,
   ChevronLeft,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -27,9 +28,10 @@ interface SidebarProps {
   onNavChange: (id: string) => void;
   collapsed: boolean;
   onToggleCollapse: () => void;
+  onOpenPublicPage: () => void;
 }
 
-export function Sidebar({ activeNav, onNavChange, collapsed, onToggleCollapse }: SidebarProps) {
+export function Sidebar({ activeNav, onNavChange, collapsed, onToggleCollapse, onOpenPublicPage }: SidebarProps) {
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
 
   return (
@@ -139,8 +141,26 @@ export function Sidebar({ activeNav, onNavChange, collapsed, onToggleCollapse }:
         </ul>
       </nav>
 
-      {/* Bottom collapse toggle */}
-      <div className="p-3 border-t border-[#d4af37]/8">
+      {/* View booking page + collapse */}
+      <div className="p-3 border-t border-[#d4af37]/8 space-y-1.5">
+        <button
+          onClick={onOpenPublicPage}
+          className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-[#d4af37]/70 hover:text-[#d4af37] hover:bg-[#161616] transition-all duration-200 cursor-pointer text-xs"
+        >
+          <Globe className="w-4 h-4 flex-shrink-0" />
+          <AnimatePresence>
+            {!collapsed && (
+              <motion.span
+                initial={{ opacity: 0, width: 0 }}
+                animate={{ opacity: 1, width: "auto" }}
+                exit={{ opacity: 0, width: 0 }}
+                className="font-medium whitespace-nowrap overflow-hidden"
+              >
+                View Booking Page
+              </motion.span>
+            )}
+          </AnimatePresence>
+        </button>
         <button
           onClick={onToggleCollapse}
           className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-[#555] hover:text-[#d4af37] hover:bg-[#161616] transition-all duration-200 cursor-pointer"
