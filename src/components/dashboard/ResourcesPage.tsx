@@ -521,7 +521,6 @@ export function ResourcesPage() {
                 </div>
               )}
               <div className="px-5 pb-4"><Pagination current={page} total={filtered.length} onChange={setPage} /></div>
-            </div>
           </div>
         </div>
         <AnimatePresence>
