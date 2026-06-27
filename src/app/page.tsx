@@ -9,13 +9,9 @@ import { AppointmentsPage } from "@/components/dashboard/AppointmentsPage";
 import { CalendarPage } from "@/components/dashboard/CalendarPage";
 import { ClientsPage } from "@/components/dashboard/ClientsPage";
 import { ServicesPage } from "@/components/dashboard/ServicesPage";
-import { StaffPage } from "@/components/dashboard/StaffPage";
-import { WaitingListPage } from "@/components/dashboard/WaitingListPage";
-import { ResourcesPage } from "@/components/dashboard/ResourcesPage";
-import { AnalyticsPage } from "@/components/dashboard/AnalyticsPage";
-import { ReportsPage } from "@/components/dashboard/ReportsPage";
 import { SettingsPage } from "@/components/dashboard/SettingsPage";
-import { IntegrationsPage } from "@/components/dashboard/IntegrationsPage";
+import { NewBookingModal } from "@/components/dashboard/NewBookingModal";
+import { PublicBookingPage } from "@/components/public/PublicBookingPage";
 
 const pageTransition = {
   initial: { opacity: 0, y: 8 },
@@ -24,12 +20,16 @@ const pageTransition = {
   transition: { duration: 0.25 },
 };
 
-export default function DashboardPage() {
+type AppMode = "public" | "admin";
+
+export default function AppPage() {
+  const [mode, setMode] = useState<AppMode>("public");
   const [activeNav, setActiveNav] = useState("dashboard");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [calendarBookingId, setCalendarBookingId] = useState<string | null>("cb17");
+  const [calendarBookingId, setCalendarBookingId] = useState<string | null>(null);
+  const [showNewBooking, setShowNewBooking] = useState(false);
 
-  const renderPage = () => {
+  const renderAdminPage = () => {
     switch (activeNav) {
       case "calendar":
         return (
@@ -55,46 +55,10 @@ export default function DashboardPage() {
             <ServicesPage />
           </motion.div>
         );
-      case "waiting-list":
-        return (
-          <motion.div key="waiting-list" {...pageTransition}>
-            <WaitingListPage />
-          </motion.div>
-        );
-      case "staff":
-        return (
-          <motion.div key="staff" {...pageTransition}>
-            <StaffPage />
-          </motion.div>
-        );
-      case "resources":
-        return (
-          <motion.div key="resources" {...pageTransition}>
-            <ResourcesPage />
-          </motion.div>
-        );
-      case "analytics":
-        return (
-          <motion.div key="analytics" {...pageTransition}>
-            <AnalyticsPage />
-          </motion.div>
-        );
-      case "reports":
-        return (
-          <motion.div key="reports" {...pageTransition}>
-            <ReportsPage />
-          </motion.div>
-        );
       case "settings":
         return (
           <motion.div key="settings" {...pageTransition}>
             <SettingsPage />
-          </motion.div>
-        );
-      case "integrations":
-        return (
-          <motion.div key="integrations" {...pageTransition}>
-            <IntegrationsPage />
           </motion.div>
         );
       default:
@@ -106,6 +70,12 @@ export default function DashboardPage() {
     }
   };
 
+  if (mode === "public") {
+    return (
+      <PublicBookingPage onOpenDashboard={() => setMode("admin")} />
+    );
+  }
+
   return (
     <div className="flex h-screen overflow-hidden bg-[#0e0e0e]">
       <Sidebar
@@ -116,14 +86,19 @@ export default function DashboardPage() {
       />
 
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
-        <Topbar />
+        <Topbar onNewBooking={() => setShowNewBooking(true)} />
 
         <main className="flex-1 overflow-y-auto">
           <AnimatePresence mode="wait">
-            {renderPage()}
+            {renderAdminPage()}
           </AnimatePresence>
         </main>
       </div>
+
+      <NewBookingModal
+        open={showNewBooking}
+        onClose={() => setShowNewBooking(false)}
+      />
     </div>
   );
 }

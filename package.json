@@ -1,6 +1,6 @@
 {
-  "name": "nextjs_tailwind_shadcn_ts",
-  "version": "0.2.0",
+  "name": "obsidian-booking",
+  "version": "1.0.0",
   "private": true,
   "scripts": {
     "dev": "node scripts/fix-resources.cjs && next dev -p 3000",

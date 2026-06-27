@@ -25,12 +25,31 @@ import { StatusChip } from "./StatusChip";
 import { PremiumButton } from "./PremiumButton";
 import { SectionPanel } from "./SectionPanel";
 
-/* ─── Constants ─── */
+/* ─── Dynamic Date Helpers ─── */
 
-const TODAY = "2024-05-15";
-const WEEK_START = "2024-05-13";
-const WEEK_END = "2024-05-17";
-const WEEK_DAYS = ["2024-05-13", "2024-05-14", "2024-05-15", "2024-05-16", "2024-05-17"];
+function getTodayStr() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function getWeekStart(today: string) {
+  const d = new Date(today + "T12:00:00");
+  const day = d.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  d.setDate(d.getDate() + diff);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function addDays(dateStr: string, days: number) {
+  const d = new Date(dateStr + "T12:00:00");
+  d.setDate(d.getDate() + days);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+const TODAY = getTodayStr();
+const WEEK_START = getWeekStart(TODAY);
+const WEEK_END = addDays(WEEK_START, 4);
+const WEEK_DAYS = [WEEK_START, addDays(WEEK_START, 1), addDays(WEEK_START, 2), addDays(WEEK_START, 3), addDays(WEEK_START, 4)];
 const EXCLUDED_STATUSES: string[] = ["cancelled", "no-show"];
 const DONUT_COLORS = ["#d4af37", "#4a4a4a", "#333333", "#1e1e1e", "#2a2a2a"];
 
@@ -336,8 +355,8 @@ export function DashboardView() {
   const waitingListCount = waitingList.length;
 
   // Hrs remaining: per-staff average remaining business hours today
-  const hrsRemaining = useMemo(() => {
-    if (staff.length === 0) return 0;
+  const hrsRemaining = useMemo((): string => {
+    if (staff.length === 0) return "0";
     const avgBookedPerStaff = todayTotalMins / staff.length / 60;
     return Math.max(0, 9 - avgBookedPerStaff).toFixed(1);
   }, [todayTotalMins, staff.length]);

@@ -6,32 +6,20 @@ import {
   LayoutDashboard,
   CalendarDays,
   CalendarRange,
-  Clock,
   Users,
   Layers,
-  UserCog,
-  FolderOpen,
-  BarChart3,
-  FileText,
   Settings,
-  Plug,
   ChevronLeft,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navItems = [
   { icon: LayoutDashboard, label: "Dashboard", id: "dashboard" },
-  { icon: CalendarDays, label: "Appointments", id: "appointments" },
   { icon: CalendarRange, label: "Calendar", id: "calendar" },
-  { icon: Clock, label: "Waiting List", id: "waiting-list" },
+  { icon: CalendarDays, label: "Appointments", id: "appointments" },
   { icon: Users, label: "Clients", id: "clients" },
   { icon: Layers, label: "Services", id: "services" },
-  { icon: UserCog, label: "Staff", id: "staff" },
-  { icon: FolderOpen, label: "Resources", id: "resources" },
-  { icon: BarChart3, label: "Analytics", id: "analytics" },
-  { icon: FileText, label: "Reports", id: "reports" },
   { icon: Settings, label: "Settings", id: "settings" },
-  { icon: Plug, label: "Integrations", id: "integrations" },
 ];
 
 interface SidebarProps {

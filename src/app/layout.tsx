@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Obsidian Booking — Dashboard",
-  description: "Premium booking management dashboard for Obsidian Booking.",
+  title: "Obsidian Booking — Premium Appointment System",
+  description: "A focused booking and client management system for premium service businesses.",
   icons: {
     icon: "/logo.png",
   },

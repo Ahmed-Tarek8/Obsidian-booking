@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 
-type StatusType = "confirmed" | "pending" | "rescheduled" | "cancelled" | "completed" | "arrived";
+export type StatusType = "confirmed" | "pending" | "rescheduled" | "cancelled" | "completed" | "arrived";
 
 interface StatusChipProps {
   status: StatusType;

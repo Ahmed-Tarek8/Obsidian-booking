@@ -1,13 +1,16 @@
 "use client";
 
-import { Search, Bell, Calendar, Plus, ChevronDown, MoreHorizontal } from "lucide-react";
+import { Search, Plus, ChevronDown } from "lucide-react";
 import { PremiumButton } from "./PremiumButton";
+import { useBookingStore } from "@/lib/store";
 
 interface TopbarProps {
   onNewBooking?: () => void;
 }
 
 export function Topbar({ onNewBooking }: TopbarProps) {
+  const settings = useBookingStore((s) => s.settings);
+
   return (
     <header className="h-16 flex items-center justify-between px-6 border-b border-[#d4af37]/8 bg-[#0e0e0e]/80 backdrop-blur-sm relative z-20 flex-shrink-0">
       {/* Search */}
@@ -29,19 +32,6 @@ export function Topbar({ onNewBooking }: TopbarProps) {
           <span className="hidden sm:inline">New Booking</span>
         </PremiumButton>
 
-        <div className="flex items-center gap-1 ml-2">
-          <PremiumButton variant="icon" size="sm" className="relative">
-            <Calendar className="w-4 h-4" />
-          </PremiumButton>
-          <PremiumButton variant="icon" size="sm" className="relative">
-            <Bell className="w-4 h-4" />
-            <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-[#d4af37] shadow-[0_0_6px_rgba(212,175,55,0.5)]" />
-          </PremiumButton>
-          <PremiumButton variant="icon" size="sm">
-            <MoreHorizontal className="w-4 h-4" />
-          </PremiumButton>
-        </div>
-
         {/* Workspace / Profile */}
         <div className="flex items-center gap-3 ml-3 pl-3 border-l border-[#d4af37]/10">
           <div className="flex items-center gap-2.5 cursor-pointer group">
@@ -49,8 +39,8 @@ export function Topbar({ onNewBooking }: TopbarProps) {
               <span className="text-xs font-bold text-[#d4af37]">OB</span>
             </div>
             <div className="hidden md:block">
-              <div className="text-xs font-medium text-[#e0e0e0] leading-tight">Workspace A</div>
-              <div className="text-[10px] text-[#666]">Main Office</div>
+              <div className="text-xs font-medium text-[#e0e0e0] leading-tight">{settings.studioName}</div>
+              <div className="text-[10px] text-[#666] truncate max-w-[150px]">{settings.location.split(",")[0]}</div>
             </div>
             <ChevronDown className="w-3 h-3 text-[#555] hidden md:block" />
           </div>

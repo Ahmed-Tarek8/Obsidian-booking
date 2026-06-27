@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { persist, createJSONStorage } from "zustand/middleware";
 import type {
   Service,
   StaffMember,
@@ -126,21 +127,33 @@ export const RESOURCES: Resource[] = [
   { id: "res-7", name: "Vehicle 01", code: "VH-1", type: "Vehicle", location: "Main Location Garage", capacity: 4, status: "Maintenance", amenities: ["GPS", "Leather Seats", "WiFi"], manager: "Michael Chen", notes: "Scheduled maintenance until May 20." },
 ];
 
-// Appointments are spread across May 15–16, 2024 (Thu–Fri)
-// All IDs, client/service/staff/resource references point to the entities above.
+// Dynamic date helper for seed data
+function getSeedDate(daysFromNow: number) {
+  const d = new Date();
+  d.setDate(d.getDate() + daysFromNow);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function getSeedCreatedDate(daysAgo: number) {
+  const d = new Date();
+  d.setDate(d.getDate() - daysAgo);
+  return d.toISOString();
+}
+
+// Appointments spread across today and tomorrow
 export const APPOINTMENTS: Appointment[] = [
-  { id: "ap-1",  bookingId: "#0821", clientId: "cl-10", serviceId: "svc-2", staffId: "st-2", resourceId: "res-1", date: "2024-05-15", startTime: "09:00", endTime: "10:00", status: "confirmed", notes: "Deep financial review. Prepare Q2 deck.", createdDate: "2024-05-10T08:42:00" },
-  { id: "ap-2",  bookingId: "#0822", clientId: "cl-5",  serviceId: "svc-8", staffId: "st-2", resourceId: "res-1", date: "2024-05-15", startTime: "10:00", endTime: "11:00", status: "arrived", notes: "Bring updated portfolio docs.", createdDate: "2024-05-11T14:15:00" },
-  { id: "ap-3",  bookingId: "#0823", clientId: "cl-2",  serviceId: "svc-3", staffId: "st-3", resourceId: "res-3", date: "2024-05-15", startTime: "11:00", endTime: "13:00", status: "confirmed", notes: "Team alignment workshop — needs projector.", createdDate: "2024-05-09T10:30:00" },
-  { id: "ap-4",  bookingId: "#0824", clientId: "cl-3",  serviceId: "svc-5", staffId: "st-1", resourceId: "res-5", date: "2024-05-15", startTime: "12:00", endTime: "12:30", status: "pending", notes: "Follow-up from last session.", createdDate: "2024-05-12T17:00:00" },
-  { id: "ap-5",  bookingId: "#0825", clientId: "cl-7",  serviceId: "svc-4", staffId: "st-2", resourceId: "res-1", date: "2024-05-15", startTime: "13:00", endTime: "14:00", status: "confirmed", notes: "Initial full consultation — needs onboarding package.", createdDate: "2024-05-08T09:12:00" },
-  { id: "ap-6",  bookingId: "#0826", clientId: "cl-1",  serviceId: "svc-10", staffId: "st-1", resourceId: "res-2", date: "2024-05-15", startTime: "14:00", endTime: "15:00", status: "completed", notes: "Deep dive session — financial review.", createdDate: "2024-05-07T11:00:00" },
-  { id: "ap-7",  bookingId: "#0827", clientId: "cl-7",  serviceId: "svc-6", staffId: "st-3", resourceId: "res-1", date: "2024-05-15", startTime: "15:00", endTime: "16:30", status: "confirmed", notes: "Extended planning session. Block 90 min.", createdDate: "2024-05-13T15:45:00" },
-  { id: "ap-8",  bookingId: "#0828", clientId: "cl-8",  serviceId: "svc-7", staffId: "st-2", resourceId: "res-5", date: "2024-05-15", startTime: "15:00", endTime: "15:30", status: "pending", notes: "Quick follow-up from last week.", createdDate: "2024-05-14T13:20:00" },
-  { id: "ap-9",  bookingId: "#0829", clientId: "cl-9",  serviceId: "svc-9", staffId: "st-3", resourceId: "res-1", date: "2024-05-15", startTime: "16:00", endTime: "17:00", status: "completed", notes: "New client onboarding — send welcome pack first.", createdDate: "2024-05-10T07:00:00" },
-  { id: "ap-10", bookingId: "#0830", clientId: "cl-3",  serviceId: "svc-5", staffId: "st-1", resourceId: "res-5", date: "2024-05-15", startTime: "17:00", endTime: "17:30", status: "completed", notes: "Status update sync.", createdDate: "2024-05-11T16:10:00" },
-  { id: "ap-11", bookingId: "#0831", clientId: "cl-4",  serviceId: "svc-2", staffId: "st-1", resourceId: "res-1", date: "2024-05-16", startTime: "09:30", endTime: "11:00", status: "confirmed", notes: "Strategy planning for Q3.", createdDate: "2024-05-12T09:00:00" },
-  { id: "ap-12", bookingId: "#0832", clientId: "cl-6",  serviceId: "svc-3", staffId: "st-3", resourceId: "res-3", date: "2024-05-16", startTime: "11:00", endTime: "13:00", status: "pending", notes: "Team alignment workshop.", createdDate: "2024-05-13T18:30:00" },
+  { id: "ap-1",  bookingId: "#0821", clientId: "cl-10", serviceId: "svc-2", staffId: "st-2", resourceId: "res-1", date: getSeedDate(0), startTime: "09:00", endTime: "10:00", status: "confirmed", notes: "Deep financial review. Prepare Q2 deck.", createdDate: getSeedCreatedDate(5) },
+  { id: "ap-2",  bookingId: "#0822", clientId: "cl-5",  serviceId: "svc-8", staffId: "st-2", resourceId: "res-1", date: getSeedDate(0), startTime: "10:00", endTime: "11:00", status: "arrived", notes: "Bring updated portfolio docs.", createdDate: getSeedCreatedDate(4) },
+  { id: "ap-3",  bookingId: "#0823", clientId: "cl-2",  serviceId: "svc-3", staffId: "st-3", resourceId: "res-3", date: getSeedDate(0), startTime: "11:00", endTime: "13:00", status: "confirmed", notes: "Team alignment workshop — needs projector.", createdDate: getSeedCreatedDate(6) },
+  { id: "ap-4",  bookingId: "#0824", clientId: "cl-3",  serviceId: "svc-5", staffId: "st-1", resourceId: "res-5", date: getSeedDate(0), startTime: "12:00", endTime: "12:30", status: "pending", notes: "Follow-up from last session.", createdDate: getSeedCreatedDate(3) },
+  { id: "ap-5",  bookingId: "#0825", clientId: "cl-7",  serviceId: "svc-4", staffId: "st-2", resourceId: "res-1", date: getSeedDate(0), startTime: "13:00", endTime: "14:00", status: "confirmed", notes: "Initial full consultation — needs onboarding package.", createdDate: getSeedCreatedDate(7) },
+  { id: "ap-6",  bookingId: "#0826", clientId: "cl-1",  serviceId: "svc-10", staffId: "st-1", resourceId: "res-2", date: getSeedDate(0), startTime: "14:00", endTime: "15:00", status: "completed", notes: "Deep dive session — financial review.", createdDate: getSeedCreatedDate(8) },
+  { id: "ap-7",  bookingId: "#0827", clientId: "cl-7",  serviceId: "svc-6", staffId: "st-3", resourceId: "res-1", date: getSeedDate(0), startTime: "15:00", endTime: "16:30", status: "confirmed", notes: "Extended planning session. Block 90 min.", createdDate: getSeedCreatedDate(2) },
+  { id: "ap-8",  bookingId: "#0828", clientId: "cl-8",  serviceId: "svc-7", staffId: "st-2", resourceId: "res-5", date: getSeedDate(0), startTime: "15:00", endTime: "15:30", status: "pending", notes: "Quick follow-up from last week.", createdDate: getSeedCreatedDate(1) },
+  { id: "ap-9",  bookingId: "#0829", clientId: "cl-9",  serviceId: "svc-9", staffId: "st-3", resourceId: "res-1", date: getSeedDate(0), startTime: "16:00", endTime: "17:00", status: "completed", notes: "New client onboarding — send welcome pack first.", createdDate: getSeedCreatedDate(5) },
+  { id: "ap-10", bookingId: "#0830", clientId: "cl-3",  serviceId: "svc-5", staffId: "st-1", resourceId: "res-5", date: getSeedDate(0), startTime: "17:00", endTime: "17:30", status: "completed", notes: "Status update sync.", createdDate: getSeedCreatedDate(4) },
+  { id: "ap-11", bookingId: "#0831", clientId: "cl-4",  serviceId: "svc-2", staffId: "st-1", resourceId: "res-1", date: getSeedDate(1), startTime: "09:30", endTime: "11:00", status: "confirmed", notes: "Strategy planning for Q3.", createdDate: getSeedCreatedDate(3) },
+  { id: "ap-12", bookingId: "#0832", clientId: "cl-6",  serviceId: "svc-3", staffId: "st-3", resourceId: "res-3", date: getSeedDate(1), startTime: "11:00", endTime: "13:00", status: "pending", notes: "Team alignment workshop.", createdDate: getSeedCreatedDate(2) },
 ];
 
 export const WAITING_LIST: WaitingListEntry[] = [
@@ -247,7 +260,7 @@ interface BookingStore {
   cancelAppointment: (id: string) => void;
 
   // Client CRUD
-  addClient: (c: Omit<Client, "id" | "totalBookings" | "lifetimeValue" | "createdDate">) => void;
+  addClient: (c: Omit<Client, "id" | "initials" | "totalBookings" | "lifetimeValue" | "createdDate">) => void;
   updateClient: (id: string, updates: Partial<Client>) => void;
 
   // Service CRUD
@@ -269,120 +282,135 @@ interface BookingStore {
   _nextBookingNum: number;
 }
 
-let _bookingCounter = 833; // starts from #0833
+// Persisted state keys
+type PersistedKeys = "appointments" | "clients" | "services" | "settings" | "waitingList" | "_nextBookingNum";
 
-export const useBookingStore = create<BookingStore>((set, get) => ({
-  services: SERVICES,
-  staff: STAFF,
-  clients: CLIENTS,
-  resources: RESOURCES,
-  appointments: APPOINTMENTS,
-  waitingList: WAITING_LIST,
-  reports: REPORTS,
-  integrations: INTEGRATIONS,
-  settings: DEFAULT_SETTINGS,
-  _nextBookingNum: _bookingCounter,
+export const useBookingStore = create<BookingStore>()(
+  persist(
+    (set, get) => ({
+      services: SERVICES,
+      staff: STAFF,
+      clients: CLIENTS,
+      resources: RESOURCES,
+      appointments: APPOINTMENTS,
+      waitingList: WAITING_LIST,
+      reports: REPORTS,
+      integrations: INTEGRATIONS,
+      settings: DEFAULT_SETTINGS,
+      _nextBookingNum: 833,
 
-  getService: (id) => get().services.find((s) => s.id === id),
-  getStaff: (id) => get().staff.find((s) => s.id === id),
-  getClient: (id) => get().clients.find((c) => c.id === id),
-  getResource: (id) => get().resources.find((r) => r.id === id),
+      getService: (id) => get().services.find((s) => s.id === id),
+      getStaff: (id) => get().staff.find((s) => s.id === id),
+      getClient: (id) => get().clients.find((c) => c.id === id),
+      getResource: (id) => get().resources.find((r) => r.id === id),
 
-  addAppointment: (a) => {
-    const num = get()._nextBookingNum;
-    const newAppt: Appointment = {
-      ...a,
-      id: `ap-${Date.now()}`,
-      bookingId: `#${num.toString().padStart(4, "0")}`,
-      createdDate: new Date().toISOString(),
-    };
-    set((s) => ({
-      appointments: [...s.appointments, newAppt],
-      _nextBookingNum: num + 1,
-      // Update client booking count & LTV
-      clients: s.clients.map((c) =>
-        c.id === a.clientId
-          ? { ...c, totalBookings: c.totalBookings + 1, lastBookingDate: a.date, lifetimeValue: c.lifetimeValue + (s.services.find((sv) => sv.id === a.serviceId)?.price ?? 0) }
-          : c
-      ),
-      // Update service booking count
-      services: s.services.map((sv) =>
-        sv.id === a.serviceId ? { ...sv, bookings: sv.bookings + 1 } : sv
-      ),
-    }));
-  },
+      addAppointment: (a) => {
+        const num = get()._nextBookingNum;
+        const newAppt: Appointment = {
+          ...a,
+          id: `ap-${Date.now()}`,
+          bookingId: `#${num.toString().padStart(4, "0")}`,
+          createdDate: new Date().toISOString(),
+        };
+        set((s) => ({
+          appointments: [...s.appointments, newAppt],
+          _nextBookingNum: num + 1,
+          clients: s.clients.map((c) =>
+            c.id === a.clientId
+              ? { ...c, totalBookings: c.totalBookings + 1, lastBookingDate: a.date, lifetimeValue: c.lifetimeValue + (s.services.find((sv) => sv.id === a.serviceId)?.price ?? 0) }
+              : c
+          ),
+          services: s.services.map((sv) =>
+            sv.id === a.serviceId ? { ...sv, bookings: sv.bookings + 1 } : sv
+          ),
+        }));
+      },
 
-  updateAppointmentStatus: (id, status) =>
-    set((s) => ({
-      appointments: s.appointments.map((a) =>
-        a.id === id ? { ...a, status } : a
-      ),
-    })),
+      updateAppointmentStatus: (id, status) =>
+        set((s) => ({
+          appointments: s.appointments.map((a) =>
+            a.id === id ? { ...a, status } : a
+          ),
+        })),
 
-  cancelAppointment: (id) =>
-    set((s) => ({
-      appointments: s.appointments.map((a) =>
-        a.id === id ? { ...a, status: "cancelled" as AppointmentStatus } : a
-      ),
-    })),
+      cancelAppointment: (id) =>
+        set((s) => ({
+          appointments: s.appointments.map((a) =>
+            a.id === id ? { ...a, status: "cancelled" as AppointmentStatus } : a
+          ),
+        })),
 
-  addClient: (c) => {
-    const id = `cl-${Date.now()}`;
-    const initials = c.name.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2);
-    set((s) => ({
-      clients: [...s.clients, { ...c, id, initials, totalBookings: 0, lifetimeValue: 0, createdDate: new Date().toISOString() }],
-    }));
-  },
+      addClient: (c) => {
+        const id = `cl-${Date.now()}`;
+        const initials = c.name.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2);
+        set((s) => ({
+          clients: [...s.clients, { ...c, id, initials, totalBookings: 0, lifetimeValue: 0, createdDate: new Date().toISOString() }],
+        }));
+      },
 
-  updateClient: (id, updates) =>
-    set((s) => ({
-      clients: s.clients.map((c) =>
-        c.id === id ? { ...c, ...updates } : c
-      ),
-    })),
+      updateClient: (id, updates) =>
+        set((s) => ({
+          clients: s.clients.map((c) =>
+            c.id === id ? { ...c, ...updates } : c
+          ),
+        })),
 
-  addService: (s) => {
-    const id = `svc-${Date.now()}`;
-    set((state) => ({
-      services: [...state.services, { ...s, id, bookings: 0 }],
-    }));
-  },
+      addService: (s) => {
+        const id = `svc-${Date.now()}`;
+        set((state) => ({
+          services: [...state.services, { ...s, id, bookings: 0 }],
+        }));
+      },
 
-  updateService: (id, updates) =>
-    set((s) => ({
-      services: s.services.map((sv) =>
-        sv.id === id ? { ...sv, ...updates } : sv
-      ),
-    })),
+      updateService: (id, updates) =>
+        set((s) => ({
+          services: s.services.map((sv) =>
+            sv.id === id ? { ...sv, ...updates } : sv
+          ),
+        })),
 
-  updateResourceStatus: (id, status) =>
-    set((s) => ({
-      resources: s.resources.map((r) =>
-        r.id === id ? { ...r, status } : r
-      ),
-    })),
+      updateResourceStatus: (id, status) =>
+        set((s) => ({
+          resources: s.resources.map((r) =>
+            r.id === id ? { ...r, status } : r
+          ),
+        })),
 
-  addWaitingListEntry: (e) => {
-    const id = `wl-${Date.now()}`;
-    set((s) => ({
-      waitingList: [...s.waitingList, { ...e, id, addedDate: new Date().toISOString() }],
-    }));
-  },
+      addWaitingListEntry: (e) => {
+        const id = `wl-${Date.now()}`;
+        set((s) => ({
+          waitingList: [...s.waitingList, { ...e, id, addedDate: new Date().toISOString() }],
+        }));
+      },
 
-  updateWaitingListStatus: (id, status) =>
-    set((s) => ({
-      waitingList: s.waitingList.map((w) =>
-        w.id === id ? { ...w, status } : w
-      ),
-    })),
+      updateWaitingListStatus: (id, status) =>
+        set((s) => ({
+          waitingList: s.waitingList.map((w) =>
+            w.id === id ? { ...w, status } : w
+          ),
+        })),
 
-  removeFromWaitingList: (id) =>
-    set((s) => ({
-      waitingList: s.waitingList.filter((w) => w.id !== id),
-    })),
+      removeFromWaitingList: (id) =>
+        set((s) => ({
+          waitingList: s.waitingList.filter((w) => w.id !== id),
+        })),
 
-  updateSettings: (updates) =>
-    set((s) => ({
-      settings: { ...s.settings, ...updates },
-    })),
-}));
+      updateSettings: (updates) =>
+        set((s) => ({
+          settings: { ...s.settings, ...updates },
+        })),
+    }),
+    {
+      name: "obsidian-booking-store",
+      storage: createJSONStorage(() => localStorage),
+      partialize: (state) => ({
+        appointments: state.appointments,
+        clients: state.clients,
+        services: state.services,
+        settings: state.settings,
+        waitingList: state.waitingList,
+        _nextBookingNum: state._nextBookingNum,
+      }),
+    }
+  )
+);

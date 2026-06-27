@@ -7,13 +7,13 @@ import {
   MapPin,
   Layers,
   User,
-  CreditCard,
   FileText,
-  MoreHorizontal,
   Diamond,
 } from "lucide-react";
 import { PremiumButton } from "./PremiumButton";
 import { StatusChip } from "./StatusChip";
+import { useBookingStore } from "@/lib/store";
+import { toast } from "sonner";
 
 interface AppointmentDetails {
   id: string;
@@ -34,21 +34,19 @@ interface AppointmentDetails {
 }
 
 const defaultDetails: AppointmentDetails = {
-  id: "b2",
-  clientInitials: "C7",
-  clientLabel: "Client 07",
-  clientType: "VIP",
-  service: "Premium Consultation",
-  staffInitials: "SC",
-  staffLabel: "Staff C",
-  date: "Thu, May 15, 2024",
-  time: "11:00 AM",
-  endTime: "11:45 AM",
-  duration: "45 min",
-  location: "Suite A — Room 3",
-  status: "confirmed",
-  notes: "Prefers afternoon slots. Previous session notes on file.",
-  bookingId: "#0821",
+  id: "",
+  clientInitials: "??",
+  clientLabel: "Unknown",
+  service: "—",
+  staffInitials: "??",
+  staffLabel: "—",
+  date: "—",
+  time: "—",
+  endTime: "—",
+  duration: "—",
+  location: "—",
+  status: "pending",
+  bookingId: "#0000",
 };
 
 interface AppointmentDetailsPanelProps {
@@ -58,6 +56,28 @@ interface AppointmentDetailsPanelProps {
 }
 
 export function AppointmentDetailsPanel({ details = defaultDetails, onClose, isOpen }: AppointmentDetailsPanelProps) {
+  const cancelAppointment = useBookingStore((s) => s.cancelAppointment);
+  const updateAppointmentStatus = useBookingStore((s) => s.updateAppointmentStatus);
+
+  const handleCancel = () => {
+    if (!details?.id) return;
+    cancelAppointment(details.id);
+    toast.success("Booking cancelled");
+    onClose?.();
+  };
+
+  const handleCheckIn = () => {
+    if (!details?.id) return;
+    updateAppointmentStatus(details.id, "arrived");
+    toast.success("Client checked in");
+  };
+
+  const handleConfirm = () => {
+    if (!details?.id) return;
+    updateAppointmentStatus(details.id, "confirmed");
+    toast.success("Booking confirmed");
+  };
+
   return (
     <motion.aside
       initial={{ opacity: 0, x: 20 }}
@@ -121,7 +141,6 @@ export function AppointmentDetailsPanel({ details = defaultDetails, onClose, isO
             <DetailRow icon={Clock} label="Time" value={`${details.time} — ${details.endTime}`} sub={details.duration} />
             <DetailRow icon={MapPin} label="Location" value={details.location} />
             <DetailRow icon={FileText} label="Date" value={details.date} />
-            <DetailRow icon={CreditCard} label="Payment" value="On File" />
           </div>
 
           {/* Notes */}
@@ -146,19 +165,30 @@ export function AppointmentDetailsPanel({ details = defaultDetails, onClose, isO
 
         {/* Actions */}
         <div className="px-5 py-4 border-t border-[#d4af37]/8 space-y-2">
-          <PremiumButton variant="primary" className="w-full">
-            <FileText className="w-4 h-4" />
-            Edit Booking
-          </PremiumButton>
-          <div className="flex gap-2">
-            <PremiumButton variant="secondary" className="flex-1">
-              <MoreHorizontal className="w-4 h-4" />
-              Options
+          {details.status === "pending" && (
+            <PremiumButton variant="primary" className="w-full" onClick={handleConfirm}>
+              <FileText className="w-4 h-4" />
+              Confirm Booking
             </PremiumButton>
-            <PremiumButton variant="secondary" className="flex-1 !text-red-400 !border-red-500/15 hover:!bg-red-500/5">
-              Cancel
+          )}
+          {details.status === "confirmed" && (
+            <PremiumButton variant="primary" className="w-full" onClick={handleCheckIn}>
+              <FileText className="w-4 h-4" />
+              Check In Client
             </PremiumButton>
-          </div>
+          )}
+          {details.status !== "cancelled" && details.status !== "completed" && (
+            <PremiumButton
+              variant="ghost"
+              className="w-full !text-red-400 hover:!bg-red-500/10"
+              onClick={handleCancel}
+            >
+              Cancel Booking
+            </PremiumButton>
+          )}
+          {details.status === "cancelled" && (
+            <p className="text-xs text-red-400 text-center py-2">This booking has been cancelled.</p>
+          )}
         </div>
       </div>
     </motion.aside>
