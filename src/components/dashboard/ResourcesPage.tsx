@@ -3,7 +3,7 @@
 import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Calendar, Activity, CheckCircle, Wrench, Search, Filter,
+  Calendar, Activity, CheckCircle2, Wrench, Search, Filter,
   LayoutGrid, List, X, ChevronDown, ChevronLeft, ChevronRight,
   MapPin, Users, Clock, Edit3, MoreHorizontal, ArrowUpDown,
   StickyNote, BookmarkPlus, CalendarPlus, User, Phone,
@@ -222,7 +222,7 @@ function ResourceDetailPanel({ resource, onClose }: { resource: Resource; onClos
       <div className="premium-panel rounded-xl h-full flex flex-col">
         <div className="flex items-center justify-between px-5 py-4 border-b border-[#d4af37]/8">
           <div className="flex items-center gap-2">
-            <div className="w-1.5 h-1.5 rounded-full bg-[#d4af37] shadow-[0_0_6px_rgba(212,175,55,0.4)]" />
+            <span className="w-1.5 h-1.5 rounded-full bg-[#d4af37] shadow-[0_0_6px_rgba(212,175,55,0.4)]" />
             <span className="text-xs font-semibold text-[#999] uppercase tracking-widest">Resource Details</span>
           </div>
           <button onClick={onClose} className="w-7 h-7 rounded-md flex items-center justify-center text-[#555] hover:text-[#e0e0e0] hover:bg-[#1e1e1e] transition-all cursor-pointer">
@@ -240,7 +240,7 @@ function ResourceDetailPanel({ resource, onClose }: { resource: Resource; onClos
           </div>
 
           <span className={cn("inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium border", st.badge)}>
-            <div className={cn("w-1.5 h-1.5 rounded-full", st.dot)} />{st.label}</span>
+            <span className={cn("w-1.5 h-1.5 rounded-full", st.dot)} />{st.label}</span>
 
           <div className="flex items-center gap-2">
             <PremiumButton variant="primary" size="sm" onClick={() => setShowReserve(true)}>
@@ -253,7 +253,7 @@ function ResourceDetailPanel({ resource, onClose }: { resource: Resource; onClos
             {resource.status === "Maintenance" && (
               <button onClick={() => updateResourceStatus(resource.id, "Available")}
                 className="premium-btn px-3 py-1.5 rounded-lg text-[12px] text-[#ccc] bg-[#161616] border border-[#d4af37]/10 hover:border-[#d4af37]/25 transition-all cursor-pointer flex items-center gap-1.5">
-                <CheckCircle className="w-3.5 h-3.5 text-emerald-400" /> Mark Available</button>
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> Mark Available</button>
             )}
           </div>
 
@@ -263,14 +263,14 @@ function ResourceDetailPanel({ resource, onClose }: { resource: Resource; onClos
             <div className="flex gap-1 flex-wrap">
               {timeSlots.map((slot, i) => (
                 <div key={i} className="flex flex-col items-center gap-1">
-                  <div className={cn("w-7 h-3 rounded-sm", slot.available ? "bg-emerald-500/40" : "bg-red-500/40")} />
+                  <span className={cn("w-7 h-3 rounded-sm", slot.available ? "bg-emerald-500/40" : "bg-red-500/40")} />
                   <span className="text-[8px] text-[#555]">{slot.time}</span>
                 </div>
               ))}
             </div>
             <div className="flex items-center gap-4 mt-3">
-              <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-emerald-400" /><span className="text-[10px] text-[#666]">Available</span></div>
-              <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-red-400" /><span className="text-[10px] text-[#666]">Booked</span></div>
+              <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-emerald-400" /><span className="text-[10px] text-[#666]">Available</span></span>
+              <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-red-400" /><span className="text-[10px] text-[#666]">Booked</span></span>
             </div>
           </div>
 
@@ -410,7 +410,7 @@ export function ResourcesPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         <StatCard title="Total Resources" value={String(stats.total)} change="12 new this month" changeType="up" icon={Calendar} delay={0} />
         <StatCard title="In Use Now" value={String(stats.inUse)} change={`${Math.round(stats.inUse / stats.total * 100)}% of total`} changeType="neutral" icon={Activity} delay={0.06} />
-        <StatCard title="Available" value={String(stats.available)} change={`${Math.round(stats.available / stats.total * 100)}% of total`} changeType="up" icon={CheckCircle} delay={0.12} />
+        <StatCard title="Available" value={String(stats.available)} change={`${Math.round(stats.available / stats.total * 100)}% of total`} changeType="up" icon={CheckCircle2} delay={0.12} />
         <StatCard title="Maintenance" value={String(stats.maintenance)} change={`${Math.round(stats.maintenance / stats.total * 100)}% of total`} changeType="neutral" icon={Wrench} delay={0.18} />
       </div>
 
@@ -476,11 +476,11 @@ export function ResourcesPage() {
                             <td className="px-4 py-3.5"><span className={cn("inline-flex px-2 py-0.5 rounded text-[10px] font-medium border", TYPE_COLORS[row.type] || TYPE_COLORS["Equipment"])}>{row.type}</span></td>
                             <td className="px-4 py-3.5"><div className="text-[13px] text-[#888]">{row.location}</div></td>
                             <td className="px-4 py-3.5">
-                              <div className="flex items-center gap-1.5"><div className={cn("w-1.5 h-1.5 rounded-full", st.dot)} /><span className="text-[13px] text-[#ccc]">{st.label}</span></div>
+                              <div className="flex items-center gap-1.5"><span className={cn("w-1.5 h-1.5 rounded-full", st.dot)} /><span className="text-[13px] text-[#ccc]">{st.label}</span></div>
                             </td>
                             <td className="px-4 py-3.5"><div className="text-[11px] text-[#666] max-w-[200px] truncate">{getNextBooking(row.id)}</div></td>
                             <td className="px-4 py-3.5"><div className="text-[13px] text-[#888]">{row.capacity || "N/A"}</div></td>
-                            <td className="px-4 py-3.5"><span className={cn("inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium border", st.badge)}><div className={cn("w-1.5 h-1.5 rounded-full", st.dot)} />{st.label}</span></td>
+                            <td className="px-4 py-3.5"><span className={cn("inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium border", st.badge)}><span className={cn("w-1.5 h-1.5 rounded-full", st.dot)} />{st.label}</span></td>
                             <td className="px-4 py-3.5">
                               <div className="w-7 h-7 rounded-md flex items-center justify-center text-[#555] hover:text-[#d4af37] hover:bg-[#1e1e1e] transition-all opacity-0 group-hover/row:opacity-100">
                                 <ChevronRight className="w-4 h-4" /></div>
@@ -512,7 +512,7 @@ export function ResourcesPage() {
                         </div>
                         <div className="flex items-center justify-between">
                           <span className={cn("inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-medium border", st.badge)}>
-                            <div className={cn("w-1.5 h-1.5 rounded-full", st.dot)} />{st.label}</span>
+                            <span className={cn("w-1.5 h-1.5 rounded-full", st.dot)} />{st.label}</span>
                           <span className="text-[11px] text-[#555]">{row.capacity ? `${row.capacity} cap` : "—"}</span>
                         </div>
                       </motion.div>
