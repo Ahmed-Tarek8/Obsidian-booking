@@ -38,26 +38,26 @@ export const REPORTS: Report[] = [];
 export const INTEGRATIONS: Integration[] = [];
 
 export const DEFAULT_SETTINGS: StudioSettings = {
-  studioName: "Your Business Name",
-  email: "hello@yourbusiness.com",
-  phone: "+1 (555) 000-0000",
-  location: "Your Business Address",
-  timezone: "(GMT+00:00) UTC",
+  studioName: "",
+  email: "",
+  phone: "",
+  location: "",
+  timezone: "",
   businessHours: [
-    { day: "Monday",    active: true,  start: "9:00 AM", end: "6:00 PM" },
-    { day: "Tuesday",   active: true,  start: "9:00 AM", end: "6:00 PM" },
-    { day: "Wednesday", active: true,  start: "9:00 AM", end: "6:00 PM" },
-    { day: "Thursday",  active: true,  start: "9:00 AM", end: "6:00 PM" },
-    { day: "Friday",    active: true,  start: "9:00 AM", end: "5:00 PM" },
-    { day: "Saturday",  active: false, start: "",         end: "" },
-    { day: "Sunday",    active: false, start: "",         end: "" },
+    { day: "Monday",    active: false, start: "", end: "" },
+    { day: "Tuesday",   active: false, start: "", end: "" },
+    { day: "Wednesday", active: false, start: "", end: "" },
+    { day: "Thursday",  active: false, start: "", end: "" },
+    { day: "Friday",    active: false, start: "", end: "" },
+    { day: "Saturday",  active: false, start: "", end: "" },
+    { day: "Sunday",    active: false, start: "", end: "" },
   ],
   defaultSlotDuration: 60,
-  bufferTime: 15,
+  bufferTime: 0,
   cancellationPolicyHours: 24,
   taxRate: 0,
   currency: "USD ($)",
-  notifications: { email: true, sms: false, push: false, marketing: false },
+  notifications: { email: false, sms: false, push: false, marketing: false },
   primaryColor: "#D4AF37",
   secondaryColor: "#1F1F1F",
 };
@@ -128,6 +128,9 @@ interface BookingStore {
 
   // Settings
   updateSettings: (updates: Partial<StudioSettings>) => void;
+
+  // Workspace reset
+  resetWorkspace: () => void;
 
   // Booking counter
   _nextBookingNum: number;
@@ -250,10 +253,40 @@ export const useBookingStore = create<BookingStore>()(
         set((s) => ({
           settings: { ...s.settings, ...updates },
         })),
+
+      resetWorkspace: () =>
+        set({
+          services: SERVICES,
+          staff: STAFF,
+          clients: CLIENTS,
+          resources: RESOURCES,
+          appointments: APPOINTMENTS,
+          waitingList: WAITING_LIST,
+          reports: REPORTS,
+          integrations: INTEGRATIONS,
+          settings: DEFAULT_SETTINGS,
+          _nextBookingNum: 1,
+        }),
     }),
     {
-      name: "obsidian-booking-store",
+      name: "obsidian-booking-store-v4-empty-shell",
       storage: createJSONStorage(() => localStorage),
+      version: 4,
+      migrate: (_persistedState, _schemaVersion) => {
+        // Always clear old data on migration — start completely fresh
+        return {
+          services: SERVICES,
+          staff: STAFF,
+          clients: CLIENTS,
+          resources: RESOURCES,
+          appointments: APPOINTMENTS,
+          waitingList: WAITING_LIST,
+          reports: REPORTS,
+          integrations: INTEGRATIONS,
+          settings: DEFAULT_SETTINGS,
+          _nextBookingNum: 1,
+        };
+      },
       partialize: (state) => ({
         appointments: state.appointments,
         clients: state.clients,

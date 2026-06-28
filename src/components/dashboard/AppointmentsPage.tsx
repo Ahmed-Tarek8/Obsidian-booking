@@ -8,9 +8,6 @@ import {
   ChevronLeft,
   X,
   Calendar,
-  Filter,
-  LayoutGrid,
-  List,
   Edit3,
   MessageSquare,
   MoreHorizontal,
@@ -21,7 +18,6 @@ import {
   FileText,
   Phone,
   Diamond,
-  ArrowUpDown,
   CheckCircle2,
   UserCheck,
   Hourglass,
@@ -527,8 +523,7 @@ export function AppointmentsPage() {
 
   // UI State
   const [page, setPage] = useState(1);
-  const [selectedId, setSelectedId] = useState<string | null>("ap-3");
-  const [viewMode, setViewMode] = useState<"list" | "grid">("list");
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [filterStaff, setFilterStaff] = useState("all");
   const [filterService, setFilterService] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
@@ -653,11 +648,6 @@ export function AppointmentsPage() {
           onChange={setFilterStatus}
         />
 
-        <PremiumButton variant="secondary" size="sm">
-          <Filter className="w-3.5 h-3.5" />
-          Filters
-        </PremiumButton>
-
         {/* New Booking button */}
         <PremiumButton
           variant="primary"
@@ -667,31 +657,6 @@ export function AppointmentsPage() {
           <Plus className="w-3.5 h-3.5" />
           New Booking
         </PremiumButton>
-
-        <div className="ml-auto flex items-center gap-1 bg-[#0e0e0e] rounded-lg p-0.5 border border-[#d4af37]/8">
-          <button
-            onClick={() => setViewMode("grid")}
-            className={cn(
-              "p-1.5 rounded-md transition-all cursor-pointer",
-              viewMode === "grid"
-                ? "bg-gradient-to-b from-[#d4af37] via-[#c9a227] to-[#b8960b] text-[#0a0a0a]"
-                : "text-[#555] hover:text-[#999]"
-            )}
-          >
-            <LayoutGrid className="w-3.5 h-3.5" />
-          </button>
-          <button
-            onClick={() => setViewMode("list")}
-            className={cn(
-              "p-1.5 rounded-md transition-all cursor-pointer",
-              viewMode === "list"
-                ? "bg-gradient-to-b from-[#d4af37] via-[#c9a227] to-[#b8960b] text-[#0a0a0a]"
-                : "text-[#555] hover:text-[#999]"
-            )}
-          >
-            <List className="w-3.5 h-3.5" />
-          </button>
-        </div>
       </div>
 
       {/* Summary cards */}
@@ -743,24 +708,17 @@ export function AppointmentsPage() {
                 <thead>
                   <tr className="border-b border-[#d4af37]/8">
                     {[
-                      { key: "time", label: "TIME", sortable: true },
-                      { key: "client", label: "CLIENT", sortable: true },
+                      { key: "time", label: "TIME" },
+                      { key: "client", label: "CLIENT" },
                       { key: "service", label: "SERVICE" },
                       { key: "staff", label: "STAFF" },
                       { key: "status", label: "STATUS" },
                       { key: "action", label: "" },
                     ].map((col) => (
                       <th key={col.key} className="px-4 py-3 text-left">
-                        {col.sortable ? (
-                          <button className="flex items-center gap-1.5 text-[10px] font-bold text-[#555] uppercase tracking-widest hover:text-[#d4af37] transition-colors cursor-pointer">
-                            {col.label}
-                            <ArrowUpDown className="w-3 h-3 text-[#333]" />
-                          </button>
-                        ) : (
-                          <span className="text-[10px] font-bold text-[#555] uppercase tracking-widest">
-                            {col.label}
-                          </span>
-                        )}
+                        <span className="text-[10px] font-bold text-[#555] uppercase tracking-widest">
+                          {col.label}
+                        </span>
                       </th>
                     ))}
                   </tr>
@@ -863,16 +821,26 @@ export function AppointmentsPage() {
                   })}
                 </tbody>
               </table>
+
+              {filtered.length === 0 && (
+                <div className="flex flex-col items-center justify-center py-20 px-4">
+                  <Calendar className="w-10 h-10 text-[#333] mb-3" />
+                  <p className="text-sm font-medium text-[#555]">No appointments yet</p>
+                  <p className="text-xs text-[#444] mt-1">Create your first booking to get started.</p>
+                </div>
+              )}
             </div>
 
             {/* Pagination */}
-            <div className="px-5 pb-4">
-              <Pagination
-                current={safePage}
-                total={filtered.length}
-                onChange={setPage}
-              />
-            </div>
+            {filtered.length > 0 && (
+              <div className="px-5 pb-4">
+                <Pagination
+                  current={safePage}
+                  total={filtered.length}
+                  onChange={setPage}
+                />
+              </div>
+            )}
           </div>
         </div>
 
