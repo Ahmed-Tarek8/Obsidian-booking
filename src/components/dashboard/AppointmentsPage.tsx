@@ -23,6 +23,8 @@ import {
   Hourglass,
   CircleCheckBig,
   Plus,
+  Filter,
+  RotateCcw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PremiumButton } from "./PremiumButton";
@@ -133,7 +135,7 @@ function FilterDropdown({
     options.find((o) => o.value === value)?.label ?? label;
 
   return (
-    <div ref={ref} className="relative">
+    <div ref={ref} className="appointment-filter-control">
       <button
         onClick={() => setOpen(!open)}
         className="premium-btn flex items-center gap-2 px-3.5 py-2 rounded-lg text-[13px] text-[#ccc] font-medium
@@ -157,7 +159,7 @@ function FilterDropdown({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -4 }}
             transition={{ duration: 0.15 }}
-            className="absolute top-full left-0 mt-1.5 w-52 z-50 premium-panel rounded-lg border border-[#d4af37]/15 overflow-hidden shadow-[0_8px_24px_rgba(0,0,0,0.5)]"
+            className="appointment-filter-menu w-52 premium-panel rounded-lg border border-[#d4af37]/15 overflow-hidden shadow-[0_8px_24px_rgba(0,0,0,0.5)]"
           >
             <div className="py-1 max-h-64 overflow-y-auto">
               {options.map((opt) => (
@@ -527,6 +529,7 @@ export function AppointmentsPage() {
   const [filterStaff, setFilterStaff] = useState("all");
   const [filterService, setFilterService] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
+  const [showFilters, setShowFilters] = useState(true);
   const [showNewBooking, setShowNewBooking] = useState(false);
 
   // Sort by date + startTime
@@ -597,6 +600,17 @@ export function AppointmentsPage() {
     { value: "no-show", label: "No Show" },
   ];
 
+  const hasActiveFilters =
+    filterStaff !== "all" ||
+    filterService !== "all" ||
+    filterStatus !== "all";
+
+  const resetFilters = () => {
+    setFilterStaff("all");
+    setFilterService("all");
+    setFilterStatus("all");
+  };
+
   return (
     <div className="p-6 space-y-5 animate-fade-in-up">
       {/* Page header */}
@@ -610,48 +624,73 @@ export function AppointmentsPage() {
       </div>
 
       {/* Filters row */}
-      <div className="flex flex-wrap items-center gap-3">
-        {/* Date display (non-interactive) */}
+      <div className="appointment-filter-bar flex items-center gap-3">
+        {/* Date display */}
         <div
-          className="premium-btn flex items-center gap-2 px-3.5 py-2 rounded-lg text-[13px] text-[#666] font-medium
+          className="premium-btn flex h-10 flex-none items-center gap-2 rounded-lg px-3.5 text-[13px] font-medium text-[#666]
           bg-gradient-to-b from-[#1e1e1e] to-[#161616] border border-[#d4af37]/6
           shadow-[0_1px_2px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.03)]"
         >
           <Calendar className="w-3.5 h-3.5 text-[#d4af37]/40" />
-          <span>{dateRangeText}</span>
+          <span className="whitespace-nowrap">{dateRangeText}</span>
         </div>
 
-        {/* Staff filter */}
-        <FilterDropdown
-          label="All Staff"
-          icon={User}
-          options={staffOptions}
-          value={filterStaff}
-          onChange={setFilterStaff}
-        />
+        {/* Working Filters toggle */}
+        <PremiumButton
+          variant={showFilters ? "primary" : "secondary"}
+          size="sm"
+          className="flex-none"
+          onClick={() => setShowFilters((v) => !v)}
+        >
+          <Filter className="w-3.5 h-3.5" />
+          Filters
+        </PremiumButton>
 
-        {/* Service filter */}
-        <FilterDropdown
-          label="All Services"
-          icon={Layers}
-          options={serviceOptions}
-          value={filterService}
-          onChange={setFilterService}
-        />
+        {showFilters && (
+          <>
+            <FilterDropdown
+              label="All Staff"
+              icon={User}
+              options={staffOptions}
+              value={filterStaff}
+              onChange={setFilterStaff}
+            />
 
-        {/* Status filter */}
-        <FilterDropdown
-          label="All Status"
-          icon={CircleCheckBig}
-          options={statusOptions}
-          value={filterStatus}
-          onChange={setFilterStatus}
-        />
+            <FilterDropdown
+              label="All Services"
+              icon={Layers}
+              options={serviceOptions}
+              value={filterService}
+              onChange={setFilterService}
+            />
+
+            <FilterDropdown
+              label="All Status"
+              icon={CircleCheckBig}
+              options={statusOptions}
+              value={filterStatus}
+              onChange={setFilterStatus}
+            />
+
+            {hasActiveFilters && (
+              <PremiumButton
+                variant="secondary"
+                size="sm"
+                className="flex-none"
+                onClick={resetFilters}
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                Reset
+              </PremiumButton>
+            )}
+          </>
+        )}
 
         {/* New Booking button */}
         <PremiumButton
           variant="primary"
           size="sm"
+          className="flex-none"
           onClick={() => setShowNewBooking(true)}
         >
           <Plus className="w-3.5 h-3.5" />
