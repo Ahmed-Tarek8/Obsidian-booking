@@ -78,6 +78,12 @@ export function AppointmentDetailsPanel({ details = defaultDetails, onClose, isO
     toast.success("Booking confirmed");
   };
 
+  const handleMarkCompleted = () => {
+    if (!details?.id) return;
+    updateAppointmentStatus(details.id, "completed");
+    toast.success("Appointment marked as completed");
+  };
+
   return (
     <motion.aside
       initial={{ opacity: 0, x: 20 }}
@@ -171,10 +177,16 @@ export function AppointmentDetailsPanel({ details = defaultDetails, onClose, isO
               Confirm Booking
             </PremiumButton>
           )}
-          {details.status === "confirmed" && (
+          {(details.status === "confirmed" || details.status === "pending") && (
             <PremiumButton variant="primary" className="w-full" onClick={handleCheckIn}>
-              <FileText className="w-4 h-4" />
+              <User className="w-4 h-4" />
               Check In Client
+            </PremiumButton>
+          )}
+          {details.status === "arrived" && (
+            <PremiumButton variant="primary" className="w-full" onClick={handleMarkCompleted}>
+              <Clock className="w-4 h-4" />
+              Mark Completed
             </PremiumButton>
           )}
           {details.status !== "cancelled" && details.status !== "completed" && (
@@ -188,6 +200,9 @@ export function AppointmentDetailsPanel({ details = defaultDetails, onClose, isO
           )}
           {details.status === "cancelled" && (
             <p className="text-xs text-red-400 text-center py-2">This booking has been cancelled.</p>
+          )}
+          {details.status === "completed" && (
+            <p className="text-xs text-[#666] text-center py-2">This booking has been completed.</p>
           )}
         </div>
       </div>

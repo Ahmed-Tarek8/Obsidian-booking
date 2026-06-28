@@ -1,30 +1,29 @@
 # Obsidian Booking
 
-A premium appointment booking and client management system with a polished black/gold design.
+A focused appointment booking and management interface for private advisory-style service businesses.
 
 ## Features
 
-### Public Booking Page
-- Service selection with pricing and duration
-- Date and time slot picker (next 30 days)
-- Client details form
-- Booking confirmation with reference number
-- Responsive mobile-friendly design
+- Public booking flow with service selection, date/time picker, and booking reference generation
+- Admin dashboard with appointment management, client records, and service management
+- Business settings for profile, hours, booking rules, and notifications
+- Local browser persistence (localStorage) for demo persistence
 
-### Admin Dashboard
-- **Dashboard** — Today's schedule, key metrics, upcoming appointments
-- **Calendar** — Weekly calendar view with all appointments
-- **Appointments** — Full appointment list with filters, detail panel, and status management
-- **Clients** — Client management with booking history and lifetime value
-- **Services** — Service management with pricing, duration, and categories
-- **Settings** — Business information, booking rules, hours, and notification preferences
+## Demo Persistence
 
-### Key Capabilities
-- Local browser persistence (localStorage) — bookings survive page refresh
-- Real appointment creation from both admin and public booking flows
-- Status management: pending → confirmed → arrived → completed (or cancelled)
-- Auto-assignment of staff and resources when creating bookings
-- Coherent seed data for immediate demo experience
+This version uses browser localStorage for demo persistence. It is suitable for prototype review and client-facing demos, but production delivery should connect a database, authentication, and email/SMS services.
+
+## Production Requirements
+
+Before using this as a real business system, add:
+
+- Backend database (e.g., Supabase, PostgreSQL)
+- Authentication
+- Server-side validation
+- Email/SMS confirmations
+- Role-based access
+- Backup/export
+- Deployment environment configuration
 
 ## Tech Stack
 
@@ -54,26 +53,14 @@ npm start
 
 The app runs on `http://localhost:3000` by default.
 
-## Deployment
-
-Deploy to Vercel with zero configuration:
-
-```bash
-npm install -g vercel
-vercel
-```
-
-Or connect your GitHub repository to Vercel for automatic deployments.
-
 ## Demo Data
 
 The app loads with seed data for immediate demo use:
-- 10 services across consulting, advisory, and support categories
-- 4 staff members with schedules and roles
-- 10 clients including VIP and returning customers
+- 10 services across advisory and onboarding categories
+- 4 staff members with role-based labels
+- 10 anonymized client accounts
 - 12 appointments spread across today and tomorrow
-- 7 resources (meeting rooms, studios, equipment)
-- Sample waiting list entries and reports
+- 7 resources
 
 All appointment dates are generated dynamically relative to the current date, so the demo always feels current.
 
@@ -84,26 +71,6 @@ All appointment dates are generated dynamically relative to the current date, so
 - **No real payment processing** — Payment settings exist in the UI but no payment flow is implemented.
 - **No email/SMS notifications** — Notification toggles exist in settings but no actual delivery is wired.
 - **No team collaboration** — Single-user demo with no multi-user sync.
-- **No calendar sync** — External calendar integrations are shown as sample data but not functional.
-
-For production use, you would need to add a backend database (e.g., Supabase, PlanetScale, PostgreSQL), authentication (e.g., NextAuth.js, Clerk), and integrate real notification providers (e.g., SendGrid, Twilio).
-
-## Project Structure
-
-```
-src/
-  app/
-    page.tsx          # Main app with public/admin mode switch
-    layout.tsx        # Root layout with metadata
-    globals.css       # Global styles and premium design system
-  components/
-    dashboard/       # All admin dashboard components
-    public/           # Public booking page components
-  lib/
-    store.ts          # Zustand store with all entities and actions
-    types.ts          # TypeScript type definitions
-    utils.ts         # Utility functions (cn, etc.)
-```
 
 ## License
 

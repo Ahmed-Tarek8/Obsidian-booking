@@ -1,93 +1,93 @@
 "use client";
 
-import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { ChevronLeft, ChevronRight, MoreHorizontal } from "lucide-react";
+import { useState, useMemo } from "react";
+import { motion } from "framer-motion";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PremiumButton } from "./PremiumButton";
-
-type ViewMode = "DAY" | "WEEK" | "MONTH";
-
-interface BookingBlock {
-  id: string;
-  time: string;
-  endTime: string;
-  clientInitials: string;
-  clientLabel: string;
-  service: string;
-  staffInitials: string;
-  color: string;
-  span?: number;
-}
-
-const timeSlots = [
-  "9:00 AM", "10:00 AM", "11:00 AM", "12:00 PM",
-  "1:00 PM", "2:00 PM", "3:00 PM", "4:00 PM", "5:00 PM",
-];
-
-const days = [
-  { short: "MON", full: "Mon, May 12", date: "12" },
-  { short: "TUE", full: "Tue, May 13", date: "13" },
-  { short: "WED", full: "Wed, May 14", date: "14" },
-  { short: "THU", full: "Thu, May 15", date: "15", isToday: true },
-  { short: "FRI", full: "Fri, May 16", date: "16" },
-  { short: "SAT", full: "Sat, May 17", date: "17" },
-  { short: "SUN", full: "Sun, May 18", date: "18" },
-];
-
-const bookingsBySlot: Record<string, BookingBlock[][]> = {
-  "0": [
-    [
-      { id: "b1", time: "9:00 AM", endTime: "10:00 AM", clientInitials: "IA", clientLabel: "Investor A", service: "Strategy Session", staffInitials: "SB", color: "bg-gradient-to-b from-[#3d2e0a] via-[#2a2008] to-[#1a1505] border border-[#d4af37]/25" },
-    ],
-    [],
-    [
-      { id: "b2", time: "11:00 AM", endTime: "11:45 AM", clientInitials: "C7", clientLabel: "Client 07", service: "Team Workshop", staffInitials: "SC", color: "bg-gradient-to-b from-[#0a3d2d] via-[#0d2e23] to-[#071f17] border border-emerald-500/25" },
-    ],
-    [],
-    [
-      { id: "b3", time: "1:00 PM", endTime: "2:00 PM", clientInitials: "C3", clientLabel: "Client 03", service: "Full Consultation", staffInitials: "SB", color: "bg-gradient-to-b from-[#3d2e0a] via-[#2a2008] to-[#1a1505] border border-[#d4af37]/25" },
-    ],
-    [
-      { id: "b4", time: "2:00 PM", endTime: "3:00 PM", clientInitials: "IA", clientLabel: "Investor A", service: "Deep Dive Session", staffInitials: "SA", color: "bg-gradient-to-b from-[#2d1a3d] via-[#20102e] to-[#150a20] border border-purple-500/25" },
-    ],
-    [],
-    [
-      { id: "b5", time: "4:00 PM", endTime: "5:00 PM", clientInitials: "C1", clientLabel: "Client 01", service: "Onboarding Call", staffInitials: "SC", color: "bg-gradient-to-b from-[#3d2a0a] via-[#2e1f08] to-[#1f1505] border border-amber-500/25" },
-    ],
-    [],
-    [],
-  ],
-  "3": [
-    [],
-    [
-      { id: "b6", time: "10:00 AM", endTime: "11:00 AM", clientInitials: "C5", clientLabel: "Client 05", service: "Portfolio Review", staffInitials: "SB", color: "bg-gradient-to-b from-[#3d2e0a] via-[#2a2008] to-[#1a1505] border border-[#d4af37]/25" },
-    ],
-    [],
-    [
-      { id: "b7", time: "12:00 PM", endTime: "12:45 PM", clientInitials: "B2", clientLabel: "Client B", service: "Quick Sync", staffInitials: "SA", color: "bg-gradient-to-b from-[#0a3d2d] via-[#0d2e23] to-[#071f17] border border-emerald-500/25" },
-    ],
-    [],
-    [],
-    [
-      { id: "b8", time: "3:00 PM", endTime: "4:30 PM", clientInitials: "C9", clientLabel: "Client 09", service: "Extended Session", staffInitials: "SC", color: "bg-gradient-to-b from-[#3d2a0a] via-[#2e1f08] to-[#1f1505] border border-amber-500/25" },
-      { id: "b9", time: "3:00 PM", endTime: "3:45 PM", clientInitials: "C2", clientLabel: "Client 02", service: "Follow-up Call", staffInitials: "SB", color: "bg-gradient-to-b from-[#2d1a3d] via-[#20102e] to-[#150a20] border border-purple-500/25" },
-    ],
-    [],
-    [],
-  ],
-};
-
-const nowSlotIndex = 2;
-const nowSubLabel = "11:45 AM";
+import { useBookingStore, formatTime12 } from "@/lib/store";
+import { format, addDays, startOfWeek, isSameDay } from "date-fns";
 
 interface WeeklyCalendarProps {
-  onSelectBooking?: (booking: BookingBlock) => void;
+  onSelectBooking?: (bookingId: string) => void;
   selectedBookingId?: string | null;
 }
 
 export function WeeklyCalendar({ onSelectBooking, selectedBookingId }: WeeklyCalendarProps) {
-  const [viewMode, setViewMode] = useState<ViewMode>("WEEK");
+  const appointments = useBookingStore((s) => s.appointments);
+  const clients = useBookingStore((s) => s.clients);
+  const services = useBookingStore((s) => s.services);
+  const staff = useBookingStore((s) => s.staff);
+
+  const today = new Date();
+  const weekStart = startOfWeek(today, { weekStartsOn: 1 }); // Monday
+
+  const weekDays = useMemo(() => {
+    return Array.from({ length: 7 }, (_, i) => {
+      const date = addDays(weekStart, i);
+      return {
+        date,
+        short: format(date, "EEE").toUpperCase(),
+        dayNum: format(date, "d"),
+        isToday: isSameDay(date, today),
+        dateStr: format(date, "yyyy-MM-dd"),
+      };
+    });
+  }, [weekStart, today]);
+
+  const headerLabel = useMemo(() => {
+    const start = format(weekStart, "MMM d");
+    const end = format(addDays(weekStart, 6), "MMM d, yyyy");
+    return `${start} — ${end}`;
+  }, [weekStart]);
+
+  // Group appointments by date and time slot
+  const appointmentsByDayAndSlot = useMemo(() => {
+    const result: Record<string, Record<number, typeof appointments>> = {};
+    weekDays.forEach((day) => {
+      result[day.dateStr] = {};
+    });
+
+    appointments.forEach((appt) => {
+      const dayEntry = weekDays.find((d) => d.dateStr === appt.date);
+      if (!dayEntry) return;
+      if (appt.status === "cancelled") return;
+
+      // Parse start time to get slot index
+      const [h, m] = appt.startTime.split(":").map(Number);
+      const totalMinutes = h * 60 + m;
+      const slotIndex = Math.floor((totalMinutes - 9 * 60) / 60); // 9 AM start
+
+      if (slotIndex < 0 || slotIndex > 8) return;
+
+      if (!result[dayEntry.dateStr][slotIndex]) {
+        result[dayEntry.dateStr][slotIndex] = [];
+      }
+      result[dayEntry.dateStr][slotIndex].push(appt);
+    });
+
+    return result;
+  }, [appointments, weekDays]);
+
+  // Current time indicator
+  const nowIndicator = useMemo(() => {
+    const now = new Date();
+    const nowDay = weekDays.find((d) => d.isToday);
+    if (!nowDay) return null;
+
+    const [h, m] = [now.getHours(), now.getMinutes()];
+    const totalMinutes = h * 60 + m;
+    const slotIndex = Math.floor((totalMinutes - 9 * 60) / 60);
+
+    if (slotIndex < 0 || slotIndex > 8) return null;
+
+    return {
+      top: (slotIndex + 0.3) * 60,
+      label: format(now, "h:mm a"),
+    };
+  }, [weekDays]);
+
+  const timeSlots = ["9:00 AM", "10:00 AM", "11:00 AM", "12:00 PM", "1:00 PM", "2:00 PM", "3:00 PM", "4:00 PM", "5:00 PM"];
 
   return (
     <div className="premium-panel rounded-xl overflow-hidden h-full flex flex-col">
@@ -98,7 +98,7 @@ export function WeeklyCalendar({ onSelectBooking, selectedBookingId }: WeeklyCal
             <ChevronLeft className="w-4 h-4" />
           </PremiumButton>
           <span className="text-sm font-semibold text-[#e0e0e0] tracking-wide">
-            MAY 12 — MAY 18, 2024
+            {headerLabel}
           </span>
           <PremiumButton variant="ghost" size="sm" className="!p-1.5 !rounded-md">
             <ChevronRight className="w-4 h-4" />
@@ -106,29 +106,18 @@ export function WeeklyCalendar({ onSelectBooking, selectedBookingId }: WeeklyCal
         </div>
 
         <div className="flex items-center gap-0.5 bg-[#0e0e0e] rounded-lg p-0.5 border border-[#d4af37]/8">
-          {(["DAY", "WEEK", "MONTH"] as ViewMode[]).map((mode) => (
-            <button
-              key={mode}
-              onClick={() => setViewMode(mode)}
-              className={cn(
-                "px-3 py-1 text-[11px] font-semibold tracking-wider rounded-md transition-all duration-200 cursor-pointer",
-                viewMode === mode
-                  ? "bg-gradient-to-b from-[#d4af37] via-[#c9a227] to-[#b8960b] text-[#0a0a0a] shadow-[0_1px_3px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.2)]"
-                  : "text-[#666] hover:text-[#999]"
-              )}
-            >
-              {mode}
-            </button>
-          ))}
+          <button className="px-3 py-1 text-[11px] font-semibold tracking-wider rounded-md bg-gradient-to-b from-[#d4af37] via-[#c9a227] to-[#b8960b] text-[#0a0a0a] shadow-[0_1px_3px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.2)]">
+            WEEK
+          </button>
         </div>
       </div>
 
       {/* Day headers */}
       <div className="grid grid-cols-[80px_repeat(7,1fr)] border-b border-[#d4af37]/8">
         <div className="py-2.5 px-3" />
-        {days.map((day) => (
+        {weekDays.map((day) => (
           <div
-            key={day.short}
+            key={day.dateStr}
             className={cn(
               "py-2.5 text-center border-l border-[#d4af37]/5 first:border-l-0",
               day.isToday && "bg-[#d4af37]/3"
@@ -144,7 +133,7 @@ export function WeeklyCalendar({ onSelectBooking, selectedBookingId }: WeeklyCal
               "text-sm font-bold mt-0.5",
               day.isToday ? "text-[#d4af37]" : "text-[#999]"
             )}>
-              {day.date}
+              {day.dayNum}
             </div>
           </div>
         ))}
@@ -153,17 +142,19 @@ export function WeeklyCalendar({ onSelectBooking, selectedBookingId }: WeeklyCal
       {/* Time grid */}
       <div className="flex-1 overflow-y-auto relative">
         {/* Now indicator */}
-        <div
-          className="absolute left-0 right-0 z-10 pointer-events-none"
-          style={{ top: `${(nowSlotIndex + 0.75) * 60}px` }}
-        >
-          <div className="flex items-center gap-2">
-            <span className="text-[9px] font-bold text-[#d4af37] tracking-wider bg-[#d4af37]/10 px-1.5 py-0.5 rounded ml-2">
-              NOW {nowSubLabel}
-            </span>
-            <div className="flex-1 h-px bg-[#d4af37]/40" />
+        {nowIndicator && (
+          <div
+            className="absolute left-0 right-0 z-10 pointer-events-none"
+            style={{ top: `${nowIndicator.top}px` }}
+          >
+            <div className="flex items-center gap-2">
+              <span className="text-[9px] font-bold text-[#d4af37] tracking-wider bg-[#d4af37]/10 px-1.5 py-0.5 rounded ml-2">
+                NOW {nowIndicator.label}
+              </span>
+              <div className="flex-1 h-px bg-[#d4af37]/40" />
+            </div>
           </div>
-        </div>
+        )}
 
         {timeSlots.map((time, slotIdx) => (
           <div
@@ -178,52 +169,57 @@ export function WeeklyCalendar({ onSelectBooking, selectedBookingId }: WeeklyCal
             </div>
 
             {/* Day cells */}
-            {days.map((day, dayIdx) => {
-              const dayBookings = bookingsBySlot[String(dayIdx)]?.[slotIdx] || [];
-              const isNowRow = slotIdx === nowSlotIndex && day.isToday;
+            {weekDays.map((day) => {
+              const dayAppts = appointmentsByDayAndSlot[day.dateStr]?.[slotIdx] || [];
+              const isNowRow = slotIdx === Math.floor((new Date().getHours() - 9) + (new Date().getMinutes() / 60)) && day.isToday;
 
               return (
                 <div
-                  key={day.short + dayIdx}
+                  key={day.dateStr + slotIdx}
                   className={cn(
                     "py-1 px-1.5 border-l border-[#d4af37]/5 relative",
                     isNowRow && "bg-[#d4af37]/2"
                   )}
                 >
-                  {dayBookings.map((booking) => (
-                    <motion.button
-                      key={booking.id}
-                      onClick={() => onSelectBooking?.(booking)}
-                      initial={{ opacity: 0, scale: 0.95 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ duration: 0.2, delay: slotIdx * 0.03 }}
-                      className={cn(
-                        "booking-block w-full rounded-md p-2 text-left border bg-gradient-to-r cursor-pointer group/bk",
-                        booking.color,
-                        selectedBookingId === booking.id && "ring-1 ring-[#d4af37]/40"
-                      )}
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="text-[10px] text-[#999] font-medium">
-                          {booking.time} — {booking.endTime}
-                        </span>
-                        <MoreHorizontal className="w-3 h-3 text-[#555] opacity-0 group-hover/bk:opacity-100 transition-opacity cursor-pointer" />
-                      </div>
-                      <div className="flex items-center gap-1.5 mt-1">
-                        <div className="w-4 h-4 rounded bg-[#d4af37]/15 border border-[#d4af37]/20 flex items-center justify-center flex-shrink-0">
-                          <span className="text-[8px] font-bold text-[#d4af37]">{booking.clientInitials}</span>
+                  {dayAppts.map((appt) => {
+                    const client = clients.find((c) => c.id === appt.clientId);
+                    const service = services.find((s) => s.id === appt.serviceId);
+                    const staffMember = staff.find((s) => s.id === appt.staffId);
+
+                    return (
+                      <motion.button
+                        key={appt.id}
+                        onClick={() => onSelectBooking?.(appt.id)}
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ duration: 0.2, delay: slotIdx * 0.03 }}
+                        className={cn(
+                          "booking-block w-full rounded-md p-2 text-left border bg-gradient-to-r cursor-pointer mb-1",
+                          appt.status === "completed" ? "from-[#1a3d1a] via-[#142e14] to-[#0d1f0d] border-[#2ecc40]/25" :
+                          appt.status === "cancelled" ? "from-[#3d1a1a] via-[#2e1414] to-[#1f0d0d] border-red-500/25 opacity-50" :
+                          "from-[#3d2e0a] via-[#2a2008] to-[#1a1505] border-[#d4af37]/25",
+                          selectedBookingId === appt.id && "ring-1 ring-[#d4af37]/40"
+                        )}
+                      >
+                        <div className="text-[10px] text-[#999] font-medium">
+                          {formatTime12(appt.startTime)} — {formatTime12(appt.endTime)}
                         </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="text-[11px] font-medium text-[#e0e0e0] truncate">
-                            {booking.clientLabel}
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <div className="w-4 h-4 rounded bg-[#d4af37]/15 border border-[#d4af37]/20 flex items-center justify-center flex-shrink-0">
+                            <span className="text-[8px] font-bold text-[#d4af37]">{client?.initials || "??"}</span>
                           </div>
-                          <div className="text-[9px] text-[#777] truncate">
-                            {booking.service} · {booking.staffInitials}
+                          <div className="min-w-0 flex-1">
+                            <div className="text-[11px] font-medium text-[#e0e0e0] truncate">
+                              {client?.name || "Unknown"}
+                            </div>
+                            <div className="text-[9px] text-[#777] truncate">
+                              {service?.name || "Service"} · {staffMember?.initials || "??"}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </motion.button>
-                  ))}
+                      </motion.button>
+                    );
+                  })}
                 </div>
               );
             })}

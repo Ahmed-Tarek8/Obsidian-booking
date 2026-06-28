@@ -12,7 +12,6 @@ import {
   FileText,
   Clock,
   Search,
-  Filter,
   LayoutGrid,
   List,
   Star,
@@ -54,6 +53,8 @@ export function ServicesPage() {
   const services = useBookingStore((s) => s.services);
   const staff = useBookingStore((s) => s.staff);
   const appointments = useBookingStore((s) => s.appointments);
+  const updateService = useBookingStore((s) => s.updateService);
+  const addService = useBookingStore((s) => s.addService);
 
   const [selectedServiceId, setSelectedServiceId] = useState<string | null>(
     null
@@ -62,6 +63,56 @@ export function ServicesPage() {
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [availabilityFilter, setAvailabilityFilter] = useState("all");
+  const [isEditing, setIsEditing] = useState(false);
+  const [editName, setEditName] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+  const [editPrice, setEditPrice] = useState(0);
+  const [editDuration, setEditDuration] = useState(0);
+  const [editAvailability, setEditAvailability] = useState<"Active" | "Limited" | "Inactive">("Active");
+
+  const handleEditService = (svc: typeof services[0]) => {
+    setEditName(svc.name);
+    setEditDescription(svc.description);
+    setEditPrice(svc.price);
+    setEditDuration(svc.duration);
+    setEditAvailability(svc.availability as "Active" | "Limited" | "Inactive");
+    setIsEditing(true);
+  };
+
+  const handleSaveEdit = () => {
+    if (!selectedServiceId) return;
+    updateService(selectedServiceId, {
+      name: editName,
+      description: editDescription,
+      price: editPrice,
+      duration: editDuration,
+      availability: editAvailability,
+    });
+    setIsEditing(false);
+  };
+
+  const handleDuplicate = () => {
+    if (!selectedServiceId) return;
+    const svc = services.find((s) => s.id === selectedServiceId);
+    if (!svc) return;
+    addService({
+      name: `${svc.name} Copy`,
+      category: svc.category,
+      categoryColor: svc.categoryColor,
+      description: svc.description,
+      duration: svc.duration,
+      price: svc.price,
+      availability: "Active",
+      staffIds: svc.staffIds,
+      featured: false,
+    });
+  };
+
+  const handleArchive = () => {
+    if (!selectedServiceId) return;
+    updateService(selectedServiceId, { availability: "Inactive" });
+    setSelectedServiceId(null);
+  };
 
   // ── Computed: categories for filter dropdown ────────────────────────
   const categories = useMemo(
@@ -763,10 +814,7 @@ export function ServicesPage() {
                         </span>
                       </div>
                     </div>
-                    <button className="flex items-center gap-1.5 text-xs text-[#d4af37] cursor-pointer hover:text-[#ebd08f] transition-colors py-1">
-                      <Plus className="w-3.5 h-3.5" />
-                      Add Tier
-                    </button>
+                    
                   </div>
                 </div>
 
@@ -776,9 +824,7 @@ export function ServicesPage() {
                     <h3 className="text-[10px] font-semibold tracking-widest text-[#666] uppercase">
                       Assigned Staff
                     </h3>
-                    <PremiumButton variant="ghost" size="sm">
-                      Manage
-                    </PremiumButton>
+                    
                   </div>
                   {resolvedStaff.length > 0 ? (
                     <div className="space-y-1.5">
@@ -814,17 +860,11 @@ export function ServicesPage() {
                     <h3 className="text-[10px] font-semibold tracking-widest text-[#666] uppercase">
                       Available Hours
                     </h3>
-                    <PremiumButton variant="ghost" size="sm">
-                      Edit
-                    </PremiumButton>
                   </div>
                   <div className="bg-[#0e0e0e] rounded-lg px-3 py-2.5">
                     <p className="text-sm text-white">
                       Mon — Fri, 9:00 AM – 6:00 PM
                     </p>
-                    <button className="text-xs text-[#d4af37] mt-1 cursor-pointer hover:text-[#ebd08f] transition-colors">
-                      Custom
-                    </button>
                   </div>
                 </div>
 
@@ -834,6 +874,7 @@ export function ServicesPage() {
                     variant="primary"
                     size="md"
                     className="w-full"
+                    onClick={() => handleEditService(selectedService)}
                   >
                     <Pencil className="w-4 h-4" />
                     Edit Service
@@ -842,6 +883,7 @@ export function ServicesPage() {
                     variant="secondary"
                     size="md"
                     className="w-full"
+                    onClick={handleDuplicate}
                   >
                     <Copy className="w-4 h-4" />
                     Duplicate
@@ -850,6 +892,7 @@ export function ServicesPage() {
                     variant="ghost"
                     size="md"
                     className="w-full text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                    onClick={handleArchive}
                   >
                     <Trash2 className="w-4 h-4" />
                     Archive
@@ -857,6 +900,60 @@ export function ServicesPage() {
                 </div>
               </div>
             </div>
+          </motion.div>
+        )}
+
+        {/* Edit Service Modal */}
+        {isEditing && selectedService && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+            onClick={() => setIsEditing(false)}
+          >
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 8 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 8 }}
+              className="relative w-full max-w-md premium-panel rounded-xl border border-[#d4af37]/15 shadow-[0_24px_48px_rgba(0,0,0,0.6)] p-6"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 className="text-sm font-semibold text-[#e0e0e0] mb-4">Edit Service</h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-[10px] font-semibold text-[#555] uppercase tracking-wider mb-1">Name</label>
+                  <input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} className="premium-input w-full rounded-lg px-3 py-2 text-[13px] text-[#e0e0e0] focus:outline-none" />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-semibold text-[#555] uppercase tracking-wider mb-1">Description</label>
+                  <textarea value={editDescription} onChange={(e) => setEditDescription(e.target.value)} rows={2} className="premium-input w-full rounded-lg px-3 py-2 text-[13px] text-[#e0e0e0] focus:outline-none resize-none" />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-semibold text-[#555] uppercase tracking-wider mb-1">Price ($)</label>
+                    <input type="number" value={editPrice} onChange={(e) => setEditPrice(Number(e.target.value))} className="premium-input w-full rounded-lg px-3 py-2 text-[13px] text-[#e0e0e0] focus:outline-none" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-semibold text-[#555] uppercase tracking-wider mb-1">Duration (min)</label>
+                    <input type="number" value={editDuration} onChange={(e) => setEditDuration(Number(e.target.value))} className="premium-input w-full rounded-lg px-3 py-2 text-[13px] text-[#e0e0e0] focus:outline-none" />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-semibold text-[#555] uppercase tracking-wider mb-1">Availability</label>
+                  <select value={editAvailability} onChange={(e) => setEditAvailability(e.target.value as "Active" | "Limited" | "Inactive")} className="premium-input w-full rounded-lg px-3 py-2 text-[13px] text-[#e0e0e0] focus:outline-none">
+                    <option value="Active">Active</option>
+                    <option value="Limited">Limited</option>
+                    <option value="Inactive">Inactive</option>
+                  </select>
+                </div>
+              </div>
+              <div className="flex justify-end gap-3 mt-5">
+                <PremiumButton variant="secondary" onClick={() => setIsEditing(false)}>Cancel</PremiumButton>
+                <PremiumButton variant="primary" onClick={handleSaveEdit}>Save Changes</PremiumButton>
+              </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>

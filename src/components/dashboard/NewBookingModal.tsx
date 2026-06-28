@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Plus } from "lucide-react";
+import { X, Plus, UserPlus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PremiumButton } from "./PremiumButton";
 import { useBookingStore, formatTime12, formatCurrency } from "@/lib/store";
@@ -34,7 +34,9 @@ export function NewBookingModal({ open, onClose }: NewBookingModalProps) {
   const staff = useBookingStore((s) => s.staff);
   const resources = useBookingStore((s) => s.resources);
   const addAppointment = useBookingStore((s) => s.addAppointment);
+  const addClient = useBookingStore((s) => s.addClient);
 
+  const [isNewClient, setIsNewClient] = useState(false);
   const [clientId, setClientId] = useState("");
   const [serviceId, setServiceId] = useState("");
   const [staffId, setStaffId] = useState("");
@@ -44,9 +46,16 @@ export function NewBookingModal({ open, onClose }: NewBookingModalProps) {
   const [endTime, setEndTime] = useState("");
   const [notes, setNotes] = useState("");
 
+  // New client fields
+  const [newClientName, setNewClientName] = useState("");
+  const [newClientEmail, setNewClientEmail] = useState("");
+  const [newClientPhone, setNewClientPhone] = useState("");
+  const [newClientNotes, setNewClientNotes] = useState("");
+
   // Reset form when modal opens/closes
   useEffect(() => {
     if (open) {
+      setIsNewClient(false);
       setClientId("");
       setServiceId("");
       setStaffId("");
@@ -55,6 +64,10 @@ export function NewBookingModal({ open, onClose }: NewBookingModalProps) {
       setStartTime("");
       setEndTime("");
       setNotes("");
+      setNewClientName("");
+      setNewClientEmail("");
+      setNewClientPhone("");
+      setNewClientNotes("");
     }
   }, [open]);
 
@@ -81,7 +94,7 @@ export function NewBookingModal({ open, onClose }: NewBookingModalProps) {
     setStaffId("");
   }, [serviceId]);
 
-  const canCreate =
+  const canCreateFromExisting =
     clientId &&
     serviceId &&
     staffId &&
@@ -90,10 +103,40 @@ export function NewBookingModal({ open, onClose }: NewBookingModalProps) {
     startTime &&
     endTime;
 
+  const canCreateNewClient =
+    isNewClient &&
+    newClientName.trim() &&
+    newClientEmail.trim() &&
+    serviceId &&
+    staffId &&
+    resourceId &&
+    date &&
+    startTime &&
+    endTime;
+
+  const canCreate = canCreateFromExisting || canCreateNewClient;
+
   const handleCreate = () => {
     if (!canCreate) return;
+
+    let finalClientId = clientId;
+
+    if (isNewClient) {
+      addClient({
+        name: newClientName.trim(),
+        email: newClientEmail.trim(),
+        phone: newClientPhone.trim(),
+        notes: newClientNotes.trim(),
+        tier: "Regular",
+        status: "Active",
+        tags: [],
+      });
+      // Use the most recently added client (last in array)
+      finalClientId = `cl-${Date.now()}`;
+    }
+
     addAppointment({
-      clientId,
+      clientId: finalClientId,
       serviceId,
       staffId,
       resourceId,
@@ -154,26 +197,66 @@ export function NewBookingModal({ open, onClose }: NewBookingModalProps) {
 
             {/* Form */}
             <div className="px-6 py-5 space-y-4 max-h-[60vh] overflow-y-auto">
-              {/* Client */}
+              {/* Client selection */}
               <div>
-                <label className="block text-[11px] font-semibold text-[#888] uppercase tracking-wider mb-1.5">
-                  Client
-                </label>
-                <select
-                  value={clientId}
-                  onChange={(e) => setClientId(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-lg bg-[#0e0e0e] border border-[#d4af37]/15 text-[#e0e0e0] text-[13px]
-                    focus:outline-none focus:border-[#d4af37]/40 cursor-pointer
-                    [&>option]:bg-[#0e0e0e] [&>option]:text-[#ccc]"
-                >
-                  <option value="">Select a client…</option>
-                  {clients.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                      {c.tier === "VIP" ? " (VIP)" : ""}
-                    </option>
-                  ))}
-                </select>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-[11px] font-semibold text-[#888] uppercase tracking-wider">
+                    Client
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsNewClient(!isNewClient);
+                      setClientId("");
+                    }}
+                    className="flex items-center gap-1 text-[11px] text-[#d4af37] hover:text-[#e0c55a] transition-colors cursor-pointer"
+                  >
+                    <UserPlus className="w-3 h-3" />
+                    {isNewClient ? "Select existing" : "New client"}
+                  </button>
+                </div>
+
+                {isNewClient ? (
+                  <div className="space-y-3 p-3 rounded-lg bg-[#0e0e0e] border border-[#d4af37]/10">
+                    <input
+                      type="text"
+                      placeholder="Client name"
+                      value={newClientName}
+                      onChange={(e) => setNewClientName(e.target.value)}
+                      className="w-full px-3 py-2 rounded-md bg-[#1a1a1a] border border-[#d4af37]/10 text-[#e0e0e0] text-[13px] placeholder:text-[#444] focus:outline-none focus:border-[#d4af37]/40"
+                    />
+                    <input
+                      type="email"
+                      placeholder="Email address"
+                      value={newClientEmail}
+                      onChange={(e) => setNewClientEmail(e.target.value)}
+                      className="w-full px-3 py-2 rounded-md bg-[#1a1a1a] border border-[#d4af37]/10 text-[#e0e0e0] text-[13px] placeholder:text-[#444] focus:outline-none focus:border-[#d4af37]/40"
+                    />
+                    <input
+                      type="tel"
+                      placeholder="Phone number (optional)"
+                      value={newClientPhone}
+                      onChange={(e) => setNewClientPhone(e.target.value)}
+                      className="w-full px-3 py-2 rounded-md bg-[#1a1a1a] border border-[#d4af37]/10 text-[#e0e0e0] text-[13px] placeholder:text-[#444] focus:outline-none focus:border-[#d4af37]/40"
+                    />
+                  </div>
+                ) : (
+                  <select
+                    value={clientId}
+                    onChange={(e) => setClientId(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-lg bg-[#0e0e0e] border border-[#d4af37]/15 text-[#e0e0e0] text-[13px]
+                      focus:outline-none focus:border-[#d4af37]/40 cursor-pointer
+                      [&>option]:bg-[#0e0e0e] [&>option]:text-[#ccc]"
+                  >
+                    <option value="">Select a client…</option>
+                    {clients.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                        {c.tier === "VIP" ? " (VIP)" : ""}
+                      </option>
+                    ))}
+                  </select>
+                )}
               </div>
 
               {/* Service */}
@@ -309,7 +392,7 @@ export function NewBookingModal({ open, onClose }: NewBookingModalProps) {
                 <textarea
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  rows={3}
+                  rows={2}
                   placeholder="Optional notes for this booking…"
                   className="w-full px-3.5 py-2.5 rounded-lg bg-[#0e0e0e] border border-[#d4af37]/15 text-[#e0e0e0] text-[13px]
                     placeholder:text-[#444] focus:outline-none focus:border-[#d4af37]/40 resize-none"

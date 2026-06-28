@@ -122,9 +122,9 @@ function ProfileCard({
 function GeneralTab() {
   const settings = useBookingStore((s) => s.settings);
   const updateSettings = useBookingStore((s) => s.updateSettings);
-  const notifications = settings.notifications;
 
   const activeDaysCount = settings.businessHours.filter((h) => h.active).length;
+  const notifications = settings.notifications;
 
   const handleFieldChange = useCallback(
     (field: string, value: string | number) => {
@@ -133,54 +133,18 @@ function GeneralTab() {
     [updateSettings]
   );
 
-  const handleToggleNotification = useCallback(
-    (field: "email" | "sms" | "push" | "marketing") => {
-      updateSettings({
-        notifications: { ...notifications, [field]: !notifications[field] },
-      });
-    },
-    [notifications, updateSettings]
-  );
-
-  const handleBusinessHourToggle = useCallback(
-    (index: number) => {
-      const updated = settings.businessHours.map((h, i) =>
-        i === index ? { ...h, active: !h.active } : h
-      );
-      updateSettings({ businessHours: updated });
-    },
-    [settings.businessHours, updateSettings]
-  );
-
-  const handleBusinessHourTime = useCallback(
-    (index: number, field: "start" | "end", value: string) => {
-      const updated = settings.businessHours.map((h, i) =>
-        i === index ? { ...h, [field]: value } : h
-      );
-      updateSettings({ businessHours: updated });
-    },
-    [settings.businessHours, updateSettings]
-  );
-
   return (
     <div className="space-y-6">
-      {/* ── Profile Completion Cards ─────────────────────────────────── */}
+      {/* ── Profile Overview Cards ─────────────────────────────────── */}
       <div className="grid grid-cols-4 gap-4">
         <ProfileCard
-          title="Profile Completeness"
-          value="92%"
-          subtitle="Expand"
-          icon={Sparkles}
-          progress={92}
-        />
-        <ProfileCard
-          title="Booking Rules"
+          title="Active Days"
           value={activeDaysCount}
-          subtitle="Active days"
-          icon={BookOpen}
+          subtitle="Business days"
+          icon={Calendar}
         />
         <ProfileCard
-          title="Notification Channels"
+          title="Notifications"
           value={Object.values(notifications).filter(Boolean).length}
           subtitle="Channels active"
           icon={Bell}
@@ -189,19 +153,25 @@ function GeneralTab() {
           title="Slot Duration"
           value={`${settings.defaultSlotDuration} min`}
           subtitle="Default booking"
+          icon={Clock}
+        />
+        <ProfileCard
+          title="Currency"
+          value={settings.currency}
+          subtitle="Display currency"
           icon={Wallet}
         />
       </div>
 
-      {/* ── Studio Information ───────────────────────────────────────── */}
+      {/* ── Business Profile ───────────────────────────────────────── */}
       <SectionPanel>
         <h3 className="text-sm font-semibold text-[#e0e0e0] mb-4">
-          Studio Information
+          Business Profile
         </h3>
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-[10px] font-semibold text-[#555] uppercase tracking-wider mb-1.5">
-              Studio Name
+              Business Name
             </label>
             <input
               type="text"
@@ -262,113 +232,22 @@ function GeneralTab() {
           </div>
         </div>
       </SectionPanel>
+    </div>
+  );
+}
 
-      {/* ── Business Hours ───────────────────────────────────────────── */}
+// ── Booking Rules Tab ────────────────────────────────────────────────────
+function BookingRulesTab() {
+  const settings = useBookingStore((s) => s.settings);
+  const updateSettings = useBookingStore((s) => s.updateSettings);
+
+  return (
+    <div className="space-y-6">
       <SectionPanel>
         <h3 className="text-sm font-semibold text-[#e0e0e0] mb-4">
-          Business Hours
+          Booking Rules
         </h3>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-white/5">
-                <th className="text-left text-[10px] font-semibold text-[#555] uppercase tracking-wider pb-3 w-[140px]">
-                  Day
-                </th>
-                <th className="text-left text-[10px] font-semibold text-[#555] uppercase tracking-wider pb-3">
-                  Start Time
-                </th>
-                <th className="text-left text-[10px] font-semibold text-[#555] uppercase tracking-wider pb-3">
-                  End Time
-                </th>
-                <th className="text-right text-[10px] font-semibold text-[#555] uppercase tracking-wider pb-3 w-[50px]">
-                  Action
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {settings.businessHours.map((bh, i) => (
-                <tr
-                  key={bh.day}
-                  className="border-b border-white/[0.03] last:border-0"
-                >
-                  <td className="py-2.5">
-                    <label className="flex items-center gap-2.5 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={bh.active}
-                        onChange={() => handleBusinessHourToggle(i)}
-                        className="w-3.5 h-3.5 rounded border-[#333] bg-[#1a1a1a] text-[#d4af37] focus:ring-[#d4af37]/30 focus:ring-offset-0 cursor-pointer accent-[#d4af37]"
-                      />
-                      <span
-                        className={cn(
-                          "text-[13px]",
-                          bh.active
-                            ? "text-[#e0e0e0]"
-                            : "text-[#444]"
-                        )}
-                      >
-                        {bh.day}
-                      </span>
-                    </label>
-                  </td>
-                  <td className="py-2.5">
-                    <div className="relative w-[140px]">
-                      <select
-                        disabled={!bh.active}
-                        value={bh.start || timeOptions[0]}
-                        onChange={(e) => handleBusinessHourTime(i, "start", e.target.value)}
-                        className={cn(
-                          "premium-input w-full rounded-lg px-3 py-1.5 text-[13px] appearance-none bg-[#1a1a1a] cursor-pointer pr-8 focus:outline-none",
-                          !bh.active && "opacity-30 cursor-not-allowed"
-                        )}
-                      >
-                        {timeOptions.map((t) => (
-                          <option key={t}>{t}</option>
-                        ))}
-                      </select>
-                      <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#555] pointer-events-none" />
-                    </div>
-                  </td>
-                  <td className="py-2.5">
-                    <div className="relative w-[140px]">
-                      <select
-                        disabled={!bh.active}
-                        value={bh.end || timeOptions[10]}
-                        onChange={(e) => handleBusinessHourTime(i, "end", e.target.value)}
-                        className={cn(
-                          "premium-input w-full rounded-lg px-3 py-1.5 text-[13px] appearance-none bg-[#1a1a1a] cursor-pointer pr-8 focus:outline-none",
-                          !bh.active && "opacity-30 cursor-not-allowed"
-                        )}
-                      >
-                        {timeOptions.map((t) => (
-                          <option key={t}>{t}</option>
-                        ))}
-                      </select>
-                      <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#555] pointer-events-none" />
-                    </div>
-                  </td>
-                  <td className="py-2.5 text-right">
-                    <button
-                      type="button"
-                      className="w-6 h-6 rounded-md border border-[#d4af37]/20 text-[#d4af37] flex items-center justify-center mx-auto hover:bg-[#d4af37]/10 transition-colors cursor-pointer"
-                    >
-                      <Plus className="w-3 h-3" />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </SectionPanel>
-
-      {/* ── Booking Settings ─────────────────────────────────────────── */}
-      <SectionPanel>
-        <h3 className="text-sm font-semibold text-[#e0e0e0] mb-4">
-          Booking Settings
-        </h3>
-        <div className="grid grid-cols-3 gap-x-6 gap-y-4">
+        <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-[10px] font-semibold text-[#555] uppercase tracking-wider mb-1.5">
               Default Slot Duration
@@ -394,7 +273,7 @@ function GeneralTab() {
           </div>
           <div>
             <label className="block text-[10px] font-semibold text-[#555] uppercase tracking-wider mb-1.5">
-              Buffer Time
+              Buffer Time Between Appointments
             </label>
             <div className="relative">
               <select
@@ -415,26 +294,6 @@ function GeneralTab() {
               <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#555] pointer-events-none" />
             </div>
           </div>
-          <div>
-            <label className="block text-[10px] font-semibold text-[#555] uppercase tracking-wider mb-1.5">
-              Currency
-            </label>
-            <input
-              type="text"
-              value={settings.currency}
-              onChange={(e) => handleFieldChange("currency", e.target.value)}
-              className="premium-input w-full rounded-lg px-3 py-2 text-[13px] text-[#e0e0e0] placeholder:text-[#555] focus:outline-none"
-            />
-          </div>
-        </div>
-      </SectionPanel>
-
-      {/* ── Cancellation Policy ──────────────────────────────────────── */}
-      <SectionPanel>
-        <h3 className="text-sm font-semibold text-[#e0e0e0] mb-4">
-          Cancellation Policy
-        </h3>
-        <div className="grid grid-cols-3 gap-x-6 gap-y-4">
           <div>
             <label className="block text-[10px] font-semibold text-[#555] uppercase tracking-wider mb-1.5">
               Cancellation Notice
@@ -460,7 +319,7 @@ function GeneralTab() {
           </div>
           <div>
             <label className="block text-[10px] font-semibold text-[#555] uppercase tracking-wider mb-1.5">
-              Tax Rate
+              Tax Rate (%)
             </label>
             <input
               type="number"
@@ -470,11 +329,144 @@ function GeneralTab() {
               className="premium-input w-full rounded-lg px-3 py-2 text-[13px] text-[#e0e0e0] placeholder:text-[#555] focus:outline-none"
             />
           </div>
-          <div />
         </div>
       </SectionPanel>
+    </div>
+  );
+}
 
-      {/* ── Notification Preferences ─────────────────────────────────── */}
+// ── Hours Tab ────────────────────────────────────────────────────────────
+function HoursTab() {
+  const settings = useBookingStore((s) => s.settings);
+  const updateSettings = useBookingStore((s) => s.updateSettings);
+
+  const handleBusinessHourToggle = useCallback(
+    (index: number) => {
+      const updated = settings.businessHours.map((h, i) =>
+        i === index ? { ...h, active: !h.active } : h
+      );
+      updateSettings({ businessHours: updated });
+    },
+    [settings.businessHours, updateSettings]
+  );
+
+  const handleBusinessHourTime = useCallback(
+    (index: number, field: "start" | "end", value: string) => {
+      const updated = settings.businessHours.map((h, i) =>
+        i === index ? { ...h, [field]: value } : h
+      );
+      updateSettings({ businessHours: updated });
+    },
+    [settings.businessHours, updateSettings]
+  );
+
+  return (
+    <div className="space-y-6">
+      <SectionPanel>
+        <h3 className="text-sm font-semibold text-[#e0e0e0] mb-4">
+          Business Hours
+        </h3>
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-white/5">
+                <th className="text-left text-[10px] font-semibold text-[#555] uppercase tracking-wider pb-3 w-[140px]">
+                  Day
+                </th>
+                <th className="text-left text-[10px] font-semibold text-[#555] uppercase tracking-wider pb-3">
+                  Start Time
+                </th>
+                <th className="text-left text-[10px] font-semibold text-[#555] uppercase tracking-wider pb-3">
+                  End Time
+                </th>
+                <th className="text-right text-[10px] font-semibold text-[#555] uppercase tracking-wider pb-3 w-[50px]">
+                  Active
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {settings.businessHours.map((bh, i) => (
+                <tr
+                  key={bh.day}
+                  className="border-b border-white/[0.03] last:border-0"
+                >
+                  <td className="py-2.5">
+                    <span
+                      className={cn(
+                        "text-[13px]",
+                        bh.active
+                          ? "text-[#e0e0e0]"
+                          : "text-[#444]"
+                      )}
+                    >
+                      {bh.day}
+                    </span>
+                  </td>
+                  <td className="py-2.5">
+                    <div className="relative w-[140px]">
+                      <select
+                        disabled={!bh.active}
+                        value={bh.start || timeOptions[0]}
+                        onChange={(e) => handleBusinessHourTime(i, "start", e.target.value)}
+                        className="premium-input w-full rounded-lg px-3 py-1.5 pr-8 text-[13px] text-[#e0e0e0] appearance-none bg-[#1a1a1a] cursor-pointer focus:outline-none disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        {timeOptions.map((t) => (
+                          <option key={t} value={t}>{t}</option>
+                        ))}
+                      </select>
+                      <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#555] pointer-events-none disabled:opacity-40" />
+                    </div>
+                  </td>
+                  <td className="py-2.5">
+                    <div className="relative w-[140px]">
+                      <select
+                        disabled={!bh.active}
+                        value={bh.end || timeOptions[1]}
+                        onChange={(e) => handleBusinessHourTime(i, "end", e.target.value)}
+                        className="premium-input w-full rounded-lg px-3 py-1.5 pr-8 text-[13px] text-[#e0e0e0] appearance-none bg-[#1a1a1a] cursor-pointer focus:outline-none disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        {timeOptions.map((t) => (
+                          <option key={t} value={t}>{t}</option>
+                        ))}
+                      </select>
+                      <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#555] pointer-events-none disabled:opacity-40" />
+                    </div>
+                  </td>
+                  <td className="py-2.5 text-right">
+                    <input
+                      type="checkbox"
+                      checked={bh.active}
+                      onChange={() => handleBusinessHourToggle(i)}
+                      className="w-3.5 h-3.5 rounded border-[#333] bg-[#1a1a1a] text-[#d4af37] focus:ring-[#d4af37]/30 focus:ring-offset-0 cursor-pointer accent-[#d4af37]"
+                    />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </SectionPanel>
+    </div>
+  );
+}
+
+// ── Notifications Tab ────────────────────────────────────────────────────
+function NotificationsTab() {
+  const settings = useBookingStore((s) => s.settings);
+  const updateSettings = useBookingStore((s) => s.updateSettings);
+  const notifications = settings.notifications;
+
+  const handleToggleNotification = useCallback(
+    (field: "email" | "sms" | "push" | "marketing") => {
+      updateSettings({
+        notifications: { ...notifications, [field]: !notifications[field] },
+      });
+    },
+    [notifications, updateSettings]
+  );
+
+  return (
+    <div className="space-y-6">
       <SectionPanel>
         <h3 className="text-sm font-semibold text-[#e0e0e0] mb-4">
           Notification Preferences
@@ -509,27 +501,10 @@ function GeneralTab() {
             />
           </div>
         </div>
+        <p className="text-[11px] text-[#555] mt-4">
+          Note: Notification delivery requires integration with email and SMS services.
+        </p>
       </SectionPanel>
-    </div>
-  );
-}
-
-// ── Placeholder Tab ──────────────────────────────────────────────────────
-function PlaceholderTab({ tabId }: { tabId: TabId }) {
-  const tab = settingTabs.find((t) => t.id === tabId);
-  const Icon = tab?.icon ?? Settings;
-  return (
-    <div className="flex flex-col items-center justify-center py-24 text-center">
-      <div className="w-14 h-14 rounded-2xl bg-[#1a1a1a] border border-[#d4af37]/10 flex items-center justify-center mb-4">
-        <Icon className="w-6 h-6 text-[#d4af37]" />
-      </div>
-      <h3 className="text-sm font-semibold text-[#e0e0e0] mb-1">
-        {tab?.label ?? "Settings"} Settings
-      </h3>
-      <p className="text-[13px] text-[#555] max-w-sm">
-        Configure your {tab?.label?.toLowerCase() ?? "settings"} preferences
-        here. This section is coming soon.
-      </p>
     </div>
   );
 }
@@ -540,7 +515,7 @@ function RightColumn() {
 
   return (
     <div className="space-y-4">
-      {/* ── Studio Summary Card ─────────────────────────────────────── */}
+      {/* ── Business Summary Card ───────────────────────────────────── */}
       <SectionPanel>
         <div className="flex items-start gap-3 mb-4">
           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#d4af37]/20 to-[#d4af37]/5 border border-[#d4af37]/20 flex items-center justify-center shrink-0">
@@ -556,26 +531,8 @@ function RightColumn() {
             <p className="text-[11px] text-[#666]">{settings.phone}</p>
           </div>
         </div>
-        <PremiumButton variant="secondary" size="sm" className="w-full">
-          Edit Profile
-        </PremiumButton>
-      </SectionPanel>
-
-      {/* ── Quick Actions ────────────────────────────────────────────── */}
-      <SectionPanel>
-        <h4 className="text-xs font-semibold text-[#555] uppercase tracking-wider mb-3">
-          Quick Actions
-        </h4>
-        <div className="space-y-2">
-          <PremiumButton
-            variant="secondary"
-            size="sm"
-            className="w-full justify-start gap-2.5"
-            onClick={() => window.open("/", "_blank")}
-          >
-            <ExternalLink className="w-3.5 h-3.5" />
-            View Public Page
-          </PremiumButton>
+        <div className="text-[11px] text-[#555] leading-relaxed">
+          <p>{settings.location}</p>
         </div>
       </SectionPanel>
     </div>
@@ -590,10 +547,9 @@ export function SettingsPage() {
     <div className="h-full overflow-y-auto px-6 py-6 space-y-5">
       {/* ── Header ─────────────────────────────────────────────────────── */}
       <div>
-        <h1 className="text-xl font-bold text-[#e0e0e0]">Studio Settings</h1>
+        <h1 className="text-xl font-bold text-[#e0e0e0]">Settings</h1>
         <p className="text-[13px] text-[#666] mt-1">
-          Manage your profile, hours, booking rules, payments, and
-          notifications.
+          Manage business profile, booking rules, hours, and notifications.
         </p>
       </div>
 
@@ -631,7 +587,9 @@ export function SettingsPage() {
         {/* Left Column — Tab Content */}
         <div>
           {activeTab === "general" && <GeneralTab />}
-          {activeTab !== "general" && <GeneralTab />}
+          {activeTab === "booking" && <BookingRulesTab />}
+          {activeTab === "hours" && <HoursTab />}
+          {activeTab === "notifications" && <NotificationsTab />}
         </div>
 
         {/* Right Column — Always visible */}
