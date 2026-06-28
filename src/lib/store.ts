@@ -24,189 +24,40 @@ import type {
 // Every page must read from the store; no inline hardcoded arrays allowed.
 // ═══════════════════════════════════════════════════════════════════════════════
 
-export const SERVICES: Service[] = [
-  { id: "svc-1", name: "Private Consultation", category: "Advisory", categoryColor: "purple", duration: 60, price: 120, availability: "Active", staffIds: ["st-1", "st-2", "st-3"], bookings: 96, description: "Initial private session to understand your needs and outline a tailored path forward.", featured: true },
-  { id: "svc-2", name: "Executive Planning Session", category: "Advisory", categoryColor: "purple", duration: 90, price: 250, availability: "Active", staffIds: ["st-1", "st-2", "st-3"], bookings: 72, description: "Focused strategic planning for business growth, market positioning, and operational priorities.", featured: true },
-  { id: "svc-3", name: "Priority Consultation", category: "Advisory", categoryColor: "purple", duration: 60, price: 180, availability: "Active", staffIds: ["st-2", "st-3"], bookings: 64, description: "Comprehensive session covering all aspects of your current priorities and next steps.", featured: false },
-  { id: "svc-4", name: "Advisory Review", category: "Advisory", categoryColor: "amber", duration: 60, price: 200, availability: "Active", staffIds: ["st-2", "st-3"], bookings: 44, description: "Structured review of plans, portfolios, or proposals with actionable guidance.", featured: false },
-  { id: "svc-5", name: "Client Onboarding", category: "Onboarding", categoryColor: "green", duration: 60, price: 100, availability: "Active", staffIds: ["st-1", "st-4"], bookings: 56, description: "New client onboarding — welcome walkthrough, process overview, and Q&A session.", featured: false },
-  { id: "svc-6", name: "Follow-up Appointment", category: "Onboarding", categoryColor: "green", duration: 30, price: 85, availability: "Active", staffIds: ["st-1", "st-2"], bookings: 82, description: "Post-session check-in to track progress, answer questions, and adjust next steps.", featured: false },
-  { id: "svc-7", name: "Planning Workshop", category: "Advisory", categoryColor: "blue", duration: 120, price: 350, availability: "Active", staffIds: ["st-3", "st-4"], bookings: 48, description: "Extended collaborative session for complex planning, alignment, and structured roadmapping.", featured: false },
-  { id: "svc-8", name: "Senior Advisor Session", category: "Advisory", categoryColor: "purple", duration: 60, price: 250, availability: "Limited", staffIds: ["st-3"], bookings: 28, description: "Premium session with a senior advisor — deep review, financial analysis, and strategic recommendations.", featured: true },
-  { id: "svc-9", name: "Business Review", category: "Advisory", categoryColor: "purple", duration: 90, price: 220, availability: "Active", staffIds: ["st-2", "st-3"], bookings: 38, description: "Extended session for complex projects requiring thorough analysis and detailed planning.", featured: false },
-  { id: "svc-10", name: "Quick Sync", category: "Onboarding", categoryColor: "green", duration: 30, price: 75, availability: "Active", staffIds: ["st-1", "st-2", "st-4"], bookings: 110, description: "Brief focused check-in for status updates, quick decisions, or clarifications.", featured: false },
-];
+export const SERVICES: Service[] = [];
 
-export const STAFF: StaffMember[] = [
-  {
-    id: "st-3", initials: "LC", name: "Lead Consultant", role: "Manager",
-    email: "lead.consultant@obsidianbooking.com", phone: "+1 (555) 100-3001",
-    location: "Floor 2, Suite A", status: "Active", rating: 4.9, reviewCount: 127,
-    revenueMTD: 4280, hoursWorked: "38h",
-    skills: ["Strategy", "Leadership", "Client Relations", "Project Management"],
-    weeklyHours: [
-      { day: "Mon", start: "8:00 AM", end: "6:00 PM", active: true },
-      { day: "Tue", start: "8:00 AM", end: "6:00 PM", active: true },
-      { day: "Wed", start: "8:00 AM", end: "6:00 PM", active: true },
-      { day: "Thu", start: "8:00 AM", end: "6:00 PM", active: true },
-      { day: "Fri", start: "8:00 AM", end: "5:00 PM", active: true },
-      { day: "Sat", start: "9:00 AM", end: "1:00 PM", active: true },
-      { day: "Sun", start: "", end: "", active: false },
-    ],
-  },
-  {
-    id: "st-2", initials: "SC", name: "Senior Consultant", role: "Senior Consultant",
-    email: "senior.consultant@obsidianbooking.com", phone: "+1 (555) 100-3002",
-    location: "Floor 1, Suite B", status: "Active", rating: 4.8, reviewCount: 98,
-    revenueMTD: 3140, hoursWorked: "36h",
-    skills: ["Consulting", "Finance", "Analysis", "Portfolio Review"],
-    weeklyHours: [
-      { day: "Mon", start: "9:00 AM", end: "6:00 PM", active: true },
-      { day: "Tue", start: "9:00 AM", end: "6:00 PM", active: true },
-      { day: "Wed", start: "9:00 AM", end: "6:00 PM", active: true },
-      { day: "Thu", start: "9:00 AM", end: "6:00 PM", active: true },
-      { day: "Fri", start: "9:00 AM", end: "5:00 PM", active: true },
-      { day: "Sat", start: "", end: "", active: false },
-      { day: "Sun", start: "", end: "", active: false },
-    ],
-  },
-  {
-    id: "st-1", initials: "CC", name: "Client Coordinator", role: "Associate",
-    email: "client.coordinator@obsidianbooking.com", phone: "+1 (555) 100-3003",
-    location: "Floor 1, Suite C", status: "Active", rating: 4.5, reviewCount: 62,
-    revenueMTD: 1960, hoursWorked: "34h",
-    skills: ["Onboarding", "Quick Sync", "Scheduling", "Support"],
-    weeklyHours: [
-      { day: "Mon", start: "9:00 AM", end: "6:00 PM", active: true },
-      { day: "Tue", start: "9:00 AM", end: "6:00 PM", active: true },
-      { day: "Wed", start: "9:00 AM", end: "6:00 PM", active: true },
-      { day: "Thu", start: "9:00 AM", end: "6:00 PM", active: true },
-      { day: "Fri", start: "9:00 AM", end: "5:00 PM", active: true },
-      { day: "Sat", start: "", end: "", active: false },
-      { day: "Sun", start: "", end: "", active: false },
-    ],
-  },
-  {
-    id: "st-4", initials: "SD", name: "Support Desk", role: "Support",
-    email: "support@obsidianbooking.com", phone: "+1 (555) 100-3004",
-    location: "Floor 1, Suite C", status: "Active", rating: 4.3, reviewCount: 41,
-    revenueMTD: 980, hoursWorked: "30h",
-    skills: ["Support", "Admin", "Data Entry", "Scheduling"],
-    weeklyHours: [
-      { day: "Mon", start: "9:00 AM", end: "5:00 PM", active: true },
-      { day: "Tue", start: "9:00 AM", end: "5:00 PM", active: true },
-      { day: "Wed", start: "9:00 AM", end: "5:00 PM", active: true },
-      { day: "Thu", start: "9:00 AM", end: "5:00 PM", active: true },
-      { day: "Fri", start: "9:00 AM", end: "5:00 PM", active: true },
-      { day: "Sat", start: "", end: "", active: false },
-      { day: "Sun", start: "", end: "", active: false },
-    ],
-  },
-];
+export const STAFF: StaffMember[] = [];
 
-export const CLIENTS: Client[] = [
-  { id: "cl-1", name: "Priority Client A-001", initials: "PA", tier: "VIP", phone: "+1 (555) 010-0001", email: "client.a001@example.com", totalBookings: 18, lifetimeValue: 4560, status: "Active", tags: ["VIP", "High Value"], lastBookingDate: getSeedCreatedDate(3), notes: "Quarterly strategy sessions. Prefers morning availability.", createdDate: getSeedCreatedDate(60) },
-  { id: "cl-2", name: "Enterprise Account 001", initials: "EA", tier: "VIP", phone: "+1 (555) 010-0002", email: "account.001@example.com", totalBookings: 14, lifetimeValue: 3280, status: "Active", tags: ["VIP", "Enterprise"], lastBookingDate: getSeedCreatedDate(5), notes: "Enterprise account. Requires conference room setup for team sessions.", createdDate: getSeedCreatedDate(55) },
-  { id: "cl-3", name: "Returning Client A-002", initials: "RA", tier: "Regular", phone: "+1 (555) 010-0003", email: "client.a002@example.com", totalBookings: 8, lifetimeValue: 1240, status: "Returning", tags: ["Returning"], lastBookingDate: getSeedCreatedDate(2), notes: "Returning account with recurring planning sessions.", createdDate: getSeedCreatedDate(45) },
-  { id: "cl-4", name: "Priority Client B-001", initials: "PB", tier: "VIP", phone: "+1 (555) 010-0004", email: "client.b001@example.com", totalBookings: 12, lifetimeValue: 2890, status: "Active", tags: ["VIP", "Investor"], lastBookingDate: getSeedCreatedDate(1), notes: "Priority account. Confirm availability before scheduling.", createdDate: getSeedCreatedDate(40) },
-  { id: "cl-5", name: "Private Client A-003", initials: "PA", tier: "Regular", phone: "+1 (555) 010-0005", email: "client.a003@example.com", totalBookings: 5, lifetimeValue: 780, status: "Active", tags: ["New"], lastBookingDate: getSeedCreatedDate(4), notes: "Portfolio review session booked.", createdDate: getSeedCreatedDate(30) },
-  { id: "cl-6", name: "Returning Client B-002", initials: "RB", tier: "Regular", phone: "+1 (555) 010-0006", email: "client.b002@example.com", totalBookings: 3, lifetimeValue: 450, status: "Active", tags: ["New"], lastBookingDate: getSeedCreatedDate(1), notes: "Team alignment workshop scheduled.", createdDate: getSeedCreatedDate(25) },
-  { id: "cl-7", name: "Enterprise Account 002", initials: "EB", tier: "Regular", phone: "+1 (555) 010-0007", email: "account.002@example.com", totalBookings: 6, lifetimeValue: 960, status: "Returning", tags: ["Returning"], lastBookingDate: getSeedCreatedDate(2), notes: "Returning account. Extended planning sessions preferred.", createdDate: getSeedCreatedDate(35) },
-  { id: "cl-8", name: "Private Client A-004", initials: "PA", tier: "Regular", phone: "+1 (555) 010-0008", email: "client.a004@example.com", totalBookings: 4, lifetimeValue: 620, status: "Active", tags: [], lastBookingDate: getSeedCreatedDate(3), notes: "Needs follow-up after advisory review.", createdDate: getSeedCreatedDate(28) },
-  { id: "cl-9", name: "Private Client A-005", initials: "PA", tier: "Regular", phone: "+1 (555) 010-0009", email: "client.a005@example.com", totalBookings: 2, lifetimeValue: 300, status: "Active", tags: ["New"], lastBookingDate: getSeedCreatedDate(5), notes: "New client onboarding session.", createdDate: getSeedCreatedDate(10) },
-  { id: "cl-10", name: "Priority Client A-002", initials: "PA", tier: "VIP", phone: "+1 (555) 010-0010", email: "client.a006@example.com", totalBookings: 22, lifetimeValue: 5100, status: "Active", tags: ["VIP", "High Value", "Long-term"], lastBookingDate: getSeedCreatedDate(2), notes: "Long-term account. Recurring deep dive sessions scheduled.", createdDate: getSeedCreatedDate(90) },
-];
+export const CLIENTS: Client[] = [];
 
-export const RESOURCES: Resource[] = [
-  { id: "res-1", name: "Meeting Room A", code: "MR-A", type: "Meeting Room", location: "Executive Suite, Floor 2", capacity: 8, status: "Available", amenities: ["TV", "Whiteboard", "Video Conferencing", "Air Conditioning"], manager: "Lead Consultant", notes: "Best room for client presentations and strategy sessions." },
-  { id: "res-2", name: "Studio B", code: "ST-B", type: "Studio", location: "Executive Suite, Floor 1", capacity: 12, status: "In Use", amenities: ["Lighting Rig", "Backdrop", "Audio System", "Green Screen"], manager: "Senior Consultant", notes: "Primary studio for photoshoots and video sessions." },
-  { id: "res-3", name: "Conference Suite", code: "CS-1", type: "Conference Room", location: "Executive Suite, Floor 3", capacity: 20, status: "Available", amenities: ["Projector", "Sound System", "Microphones", "Catering Area"], manager: "Lead Consultant", notes: "Large conference room for team events and workshops." },
-  { id: "res-4", name: "Projector Kit", code: "PK-1", type: "Equipment", location: "Equipment Storage, Floor 1", capacity: null, status: "Available", amenities: ["4K Projector", "HDMI Cables", "Remote", "Carry Case"], manager: "Support Desk", notes: "Portable projector kit — must be returned same day." },
-  { id: "res-5", name: "VIP Lounge", code: "VL-1", type: "Lounge", location: "Executive Suite, Floor 2", capacity: 10, status: "In Use", amenities: ["Refreshments", "TV", "Sofas", "Privacy Glass"], manager: "Client Coordinator", notes: "Reserved for VIP client meetings and entertainment." },
-  { id: "res-6", name: "Mobile Setup", code: "MS-1", type: "Equipment", location: "Mobile", capacity: null, status: "Available", amenities: ["Laptop", "Hotspot", "Portable Screen", "Chargers"], manager: "Support Desk", notes: "Mobile equipment for off-site events." },
-  { id: "res-7", name: "Vehicle 01", code: "VH-1", type: "Vehicle", location: "Main Location Garage", capacity: 4, status: "Maintenance", amenities: ["GPS", "Leather Seats", "WiFi"], manager: "Support Desk", notes: "Scheduled maintenance until end of month." },
-];
+export const RESOURCES: Resource[] = [];
 
-// Dynamic date helper for seed data
-function getSeedDate(daysFromNow: number) {
-  const d = new Date();
-  d.setDate(d.getDate() + daysFromNow);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-
-function getSeedCreatedDate(daysAgo: number) {
-  const d = new Date();
-  d.setDate(d.getDate() - daysAgo);
-  return d.toISOString();
-}
-
-// Appointments spread across today and tomorrow
-export const APPOINTMENTS: Appointment[] = [
-  { id: "ap-1",  bookingId: "#0821", clientId: "cl-10", serviceId: "svc-2", staffId: "st-2", resourceId: "res-1", date: getSeedDate(0), startTime: "09:00", endTime: "10:00", status: "confirmed", notes: "Deep financial review. Prepare Q2 deck.", createdDate: getSeedCreatedDate(5) },
-  { id: "ap-2",  bookingId: "#0822", clientId: "cl-5",  serviceId: "svc-8", staffId: "st-2", resourceId: "res-1", date: getSeedDate(0), startTime: "10:00", endTime: "11:00", status: "arrived", notes: "Bring updated portfolio docs.", createdDate: getSeedCreatedDate(4) },
-  { id: "ap-3",  bookingId: "#0823", clientId: "cl-2",  serviceId: "svc-3", staffId: "st-3", resourceId: "res-3", date: getSeedDate(0), startTime: "11:00", endTime: "13:00", status: "confirmed", notes: "Team alignment workshop — needs projector.", createdDate: getSeedCreatedDate(6) },
-  { id: "ap-4",  bookingId: "#0824", clientId: "cl-3",  serviceId: "svc-5", staffId: "st-1", resourceId: "res-5", date: getSeedDate(0), startTime: "12:00", endTime: "12:30", status: "pending", notes: "Follow-up from last session.", createdDate: getSeedCreatedDate(3) },
-  { id: "ap-5",  bookingId: "#0825", clientId: "cl-7",  serviceId: "svc-4", staffId: "st-2", resourceId: "res-1", date: getSeedDate(0), startTime: "13:00", endTime: "14:00", status: "confirmed", notes: "Initial full consultation — needs onboarding package.", createdDate: getSeedCreatedDate(7) },
-  { id: "ap-6",  bookingId: "#0826", clientId: "cl-1",  serviceId: "svc-10", staffId: "st-1", resourceId: "res-2", date: getSeedDate(0), startTime: "14:00", endTime: "15:00", status: "completed", notes: "Deep dive session — financial review.", createdDate: getSeedCreatedDate(8) },
-  { id: "ap-7",  bookingId: "#0827", clientId: "cl-7",  serviceId: "svc-6", staffId: "st-3", resourceId: "res-1", date: getSeedDate(0), startTime: "15:00", endTime: "16:30", status: "confirmed", notes: "Extended planning session. Block 90 min.", createdDate: getSeedCreatedDate(2) },
-  { id: "ap-8",  bookingId: "#0828", clientId: "cl-8",  serviceId: "svc-7", staffId: "st-2", resourceId: "res-5", date: getSeedDate(0), startTime: "15:00", endTime: "15:30", status: "pending", notes: "Quick follow-up from last week.", createdDate: getSeedCreatedDate(1) },
-  { id: "ap-9",  bookingId: "#0829", clientId: "cl-9",  serviceId: "svc-9", staffId: "st-3", resourceId: "res-1", date: getSeedDate(0), startTime: "16:00", endTime: "17:00", status: "completed", notes: "New client onboarding — send welcome pack first.", createdDate: getSeedCreatedDate(5) },
-  { id: "ap-10", bookingId: "#0830", clientId: "cl-3",  serviceId: "svc-5", staffId: "st-1", resourceId: "res-5", date: getSeedDate(0), startTime: "17:00", endTime: "17:30", status: "completed", notes: "Status update sync.", createdDate: getSeedCreatedDate(4) },
-  { id: "ap-11", bookingId: "#0831", clientId: "cl-4",  serviceId: "svc-2", staffId: "st-1", resourceId: "res-1", date: getSeedDate(1), startTime: "09:30", endTime: "11:00", status: "confirmed", notes: "Strategy planning for Q3.", createdDate: getSeedCreatedDate(3) },
-  { id: "ap-12", bookingId: "#0832", clientId: "cl-6",  serviceId: "svc-3", staffId: "st-3", resourceId: "res-3", date: getSeedDate(1), startTime: "11:00", endTime: "13:00", status: "pending", notes: "Team alignment workshop.", createdDate: getSeedCreatedDate(2) },
-];
-
-export const WAITING_LIST: WaitingListEntry[] = [
-  { id: "wl-1", clientId: "cl-5", serviceId: "svc-2", preferredDate: getSeedDate(3), timeWindow: "9:00 AM – 12:00 PM", priority: "High", status: "Waiting", addedDate: getSeedCreatedDate(5), notes: "Needs strategy session, no availability this week." },
-  { id: "wl-2", clientId: "cl-6", serviceId: "svc-4", preferredDate: getSeedDate(3), timeWindow: "1:00 PM – 4:00 PM", priority: "Medium", status: "Contacted", addedDate: getSeedCreatedDate(6), notes: "Contacted — awaiting response." },
-  { id: "wl-3", clientId: "cl-9", serviceId: "svc-1", preferredDate: getSeedDate(5), timeWindow: "10:00 AM – 2:00 PM", priority: "Low", status: "Waiting", addedDate: getSeedCreatedDate(3), notes: "New client — flexible on timing." },
-  { id: "wl-4", clientId: "cl-8", serviceId: "svc-10", preferredDate: getSeedDate(3), timeWindow: "2:00 PM – 5:00 PM", priority: "High", status: "Offered Slot", addedDate: getSeedCreatedDate(7), notes: "Offered slot — pending confirmation." },
-  { id: "wl-5", clientId: "cl-3", serviceId: "svc-6", preferredDate: getSeedDate(4), timeWindow: "9:00 AM – 12:00 PM", priority: "Medium", status: "Waiting", addedDate: getSeedCreatedDate(2), notes: "Wants extended session if possible." },
-];
-
-export const REPORTS: Report[] = [
-  { id: "rpt-1", name: "Executive Summary", starred: true, category: "Business", dateRange: { start: "2024-04-01", end: "2024-04-30" }, format: "PDF", ownerId: "st-3", lastGenerated: "2024-05-01T08:12:00", schedule: "Monthly", status: "Completed", size: "12.4 MB", sections: ["KPI Overview", "Booking Summary", "Top Services", "Client Overview", "Revenue Breakdown", "Staff Performance"], recipients: ["st-3", "st-2", "st-1"] },
-  { id: "rpt-2", name: "Client Activity Report", starred: false, category: "Clients", dateRange: { start: "2024-04-01", end: "2024-04-30" }, format: "PDF", ownerId: "st-2", lastGenerated: "2024-04-30T10:45:00", schedule: "Weekly", status: "Completed", size: "8.2 MB", sections: ["New Clients", "Returning Clients", "Churn Analysis", "Client Revenue"], recipients: ["st-2", "st-3"] },
-  { id: "rpt-3", name: "Booking Utilization", starred: false, category: "Operations", dateRange: { start: "2024-04-01", end: "2024-04-30" }, format: "XLSX", ownerId: "st-3", lastGenerated: "2024-04-30T18:15:00", schedule: "Weekly", status: "Completed", size: "4.7 MB", sections: ["Utilization Rates", "Peak Hours", "Room Usage", "Staff Load"], recipients: ["st-3"] },
-  { id: "rpt-4", name: "Revenue Report", starred: false, category: "Finance", dateRange: { start: "2024-03-01", end: "2024-03-31" }, format: "PDF", ownerId: "st-3", lastGenerated: "2024-04-01T09:22:00", schedule: "Monthly", status: "Completed", size: "15.1 MB", sections: ["Revenue Breakdown", "Service Revenue", "Client Revenue", "Trends"], recipients: ["st-3", "st-2"] },
-  { id: "rpt-5", name: "Staff Performance", starred: false, category: "Team", dateRange: { start: "2024-04-01", end: "2024-04-30" }, format: "PDF", ownerId: "st-1", lastGenerated: "2024-04-30T14:22:00", schedule: "Monthly", status: "Completed", size: "6.8 MB", sections: ["Individual Performance", "Client Ratings", "Revenue per Staff", "Hours Worked"], recipients: ["st-1", "st-3"] },
-  { id: "rpt-6", name: "No Show & Cancellations", starred: false, category: "Operations", dateRange: { start: "2024-04-01", end: "2024-04-30" }, format: "CSV", ownerId: "st-3", lastGenerated: "2024-04-30T13:05:00", schedule: "Weekly", status: "Completed", size: "1.2 MB", sections: ["No Shows", "Cancellations", "Reasons", "Trends"], recipients: ["st-3"] },
-  { id: "rpt-7", name: "Service Performance", starred: false, category: "Analytics", dateRange: { start: "2024-04-01", end: "2024-04-30" }, format: "PDF", ownerId: "st-2", lastGenerated: null, schedule: "Weekly", status: "Scheduled", size: "—", sections: ["Service Metrics", "Popularity", "Revenue", "Ratings"], recipients: ["st-2"] },
-  { id: "rpt-8", name: "Custom Report", starred: false, category: "Custom", dateRange: { start: "2024-04-01", end: "2024-04-30" }, format: "XLSX", ownerId: "st-3", lastGenerated: null, schedule: "On Demand", status: "Draft", size: "—", sections: [], recipients: ["st-3"] },
-];
-
-export const INTEGRATIONS: Integration[] = [
-  { id: "int-1", name: "Calendar Sync", description: "Keep schedules in sync across platforms.", iconColor: "text-yellow-500", status: "Connected", lastSync: "2 min ago", permissions: ["Read Calendars", "Write Events", "Manage Availability"], category: "Productivity", recordsSynced: "1,248 events", syncFrequency: "Every 5 minutes" },
-  { id: "int-2", name: "Payments Gateway", description: "Process payments and manage transactions.", iconColor: "text-purple-500", status: "Connected", lastSync: "5 min ago", permissions: ["Read Transactions", "Process Payments"], category: "Finance", recordsSynced: "3,420 transactions", syncFrequency: "Real-time" },
-  { id: "int-3", name: "Video Meetings", description: "Virtual meeting room integration.", iconColor: "text-blue-500", status: "Connected", lastSync: "1 hr ago", permissions: ["Create Meetings", "Manage Participants"], category: "Communication", recordsSynced: "856 meetings", syncFrequency: "Every 15 minutes" },
-  { id: "int-4", name: "Messaging", description: "SMS and messaging notifications.", iconColor: "text-green-500", status: "Connected", lastSync: "Just now", permissions: ["Send Messages", "Read Inbox"], category: "Communication", recordsSynced: "2,150 messages", syncFrequency: "Real-time" },
-  { id: "int-5", name: "Email Marketing", description: "Email campaigns and newsletters.", iconColor: "text-purple-400", status: "Connected", lastSync: "15 min ago", permissions: ["Send Emails", "Manage Lists"], category: "Marketing", recordsSynced: "12,400 emails", syncFrequency: "Every 30 minutes" },
-  { id: "int-6", name: "Automation", description: "Workflow automation engine.", iconColor: "text-yellow-400", status: "Active", lastSync: "5 min ago", permissions: ["Trigger Workflows", "Manage Rules"], category: "Productivity", recordsSynced: "428 automations", syncFrequency: "Real-time" },
-  { id: "int-7", name: "CRM Sync", description: "Customer relationship management.", iconColor: "text-blue-400", status: "Connected", lastSync: "30 min ago", permissions: ["Read Contacts", "Write Deals"], category: "Sales", recordsSynced: "1,890 contacts", syncFrequency: "Every 10 minutes" },
-  { id: "int-8", name: "Webhooks", description: "Custom webhook endpoints.", iconColor: "text-red-400", status: "Warning", lastSync: "2 hr ago", permissions: ["Read Events"], category: "Developer", recordsSynced: "5,230 events", syncFrequency: "Real-time" },
-];
+export const APPOINTMENTS: Appointment[] = [];
+export const WAITING_LIST: WaitingListEntry[] = [];
+export const REPORTS: Report[] = [];
+export const INTEGRATIONS: Integration[] = [];
 
 export const DEFAULT_SETTINGS: StudioSettings = {
-  studioName: "Obsidian Advisory",
-  email: "appointments@obsidianbooking.com",
-  phone: "+1 (555) 010-1000",
-  location: "Private Appointment Office, Suite 300",
-  timezone: "(GMT-05:00) Eastern Time (US & Canada)",
+  studioName: "Your Business Name",
+  email: "hello@yourbusiness.com",
+  phone: "+1 (555) 000-0000",
+  location: "Your Business Address",
+  timezone: "(GMT+00:00) UTC",
   businessHours: [
     { day: "Monday",    active: true,  start: "9:00 AM", end: "6:00 PM" },
     { day: "Tuesday",   active: true,  start: "9:00 AM", end: "6:00 PM" },
     { day: "Wednesday", active: true,  start: "9:00 AM", end: "6:00 PM" },
     { day: "Thursday",  active: true,  start: "9:00 AM", end: "6:00 PM" },
     { day: "Friday",    active: true,  start: "9:00 AM", end: "5:00 PM" },
-    { day: "Saturday",  active: true,  start: "9:00 AM", end: "1:00 PM" },
+    { day: "Saturday",  active: false, start: "",         end: "" },
     { day: "Sunday",    active: false, start: "",         end: "" },
   ],
   defaultSlotDuration: 60,
   bufferTime: 15,
   cancellationPolicyHours: 24,
-  taxRate: 8.25,
+  taxRate: 0,
   currency: "USD ($)",
-  notifications: { email: true, sms: true, push: true, marketing: false },
+  notifications: { email: true, sms: false, push: false, marketing: false },
   primaryColor: "#D4AF37",
   secondaryColor: "#1F1F1F",
 };
@@ -297,7 +148,7 @@ export const useBookingStore = create<BookingStore>()(
       reports: REPORTS,
       integrations: INTEGRATIONS,
       settings: DEFAULT_SETTINGS,
-      _nextBookingNum: 833,
+      _nextBookingNum: 1,
 
       getService: (id) => get().services.find((s) => s.id === id),
       getStaff: (id) => get().staff.find((s) => s.id === id),
