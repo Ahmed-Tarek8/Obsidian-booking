@@ -1,0 +1,31 @@
+/* Stabilize appointment filter controls so dropdowns do not shift the toolbar. */
+.appointment-filter-bar {
+  align-items: center;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: visible;
+  position: relative;
+  z-index: 50;
+}
+
+.appointment-filter-control {
+  flex: 0 0 auto;
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.appointment-filter-control > button,
+.appointment-filter-control > select {
+  height: 40px;
+  transform: none !important;
+}
+
+.appointment-filter-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 200;
+  max-height: 240px;
+  overflow-y: auto;
+}
