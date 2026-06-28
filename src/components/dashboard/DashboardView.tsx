@@ -252,6 +252,7 @@ export function DashboardView() {
   );
 
   const todayApptCount = todayAppts.length;
+  const todayWalkIns = useMemo(() => todayAppts.filter((a) => a.status === "arrived").length, [todayAppts]);
 
   // Daily revenue for the week (May 13-17)
   const dailyRevenue = useMemo(
@@ -368,10 +369,10 @@ export function DashboardView() {
     <div className="p-6 space-y-5 animate-fade-in-up">
       {/* Stat cards row */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        <StatCard title="Today's Appointments" value={String(todayApptCount)} change="+3 vs yesterday" changeType="up" icon={CalendarDays} delay={0} />
-        <StatCard title="Week Revenue" value={formatCurrency(weekRevenue)} change="+12.5%" changeType="up" icon={DollarSign} delay={0.06} />
-        <StatCard title="New Clients" value={String(newClientsCount)} change="+2 this week" changeType="up" icon={UserPlus} delay={0.12} />
-        <StatCard title="Utilization" value="87%" change="+5% vs last week" changeType="up" icon={Activity} delay={0.18} />
+        <StatCard title="Today's Appointments" value={String(todayApptCount)} change={`${clients.length} total clients`} changeType="neutral" icon={CalendarDays} delay={0} />
+        <StatCard title="Week Revenue" value={formatCurrency(weekRevenue)} change={appointments.length > 0 ? `${appointments.length} bookings this week` : "No bookings yet"} changeType="neutral" icon={DollarSign} delay={0.06} />
+        <StatCard title="New Clients" value={String(newClientsCount)} change={clients.length > 0 ? `${clients.length} total clients` : "No clients yet"} changeType="neutral" icon={UserPlus} delay={0.12} />
+        <StatCard title="Utilization" value={todayApptCount > 0 ? `${Math.min(100, Math.round((todayTotalMins / 60 / Math.max(staff.length, 1)) * 100 / 9 * 100))}%` : "0%"} change={staff.length > 0 ? `${staff.length} staff members` : "Add staff to track"} changeType="neutral" icon={Activity} delay={0.18} />
       </div>
 
       {/* Middle row: 3 panels */}
@@ -393,9 +394,9 @@ export function DashboardView() {
           </div>
           <RevenueTrendChart dailyRevenue={dailyRevenue} />
           <div className="grid grid-cols-3 gap-2 mt-4">
-            <MiniStat label="Month to Date" value={formatCurrency(mtdRevenue)} trend="+9.8%" />
-            <MiniStat label="Year to Date" value={formatCurrency(mtdRevenue * 3)} trend="+14.6%" />
-            <MiniStat label="Avg. Ticket" value={formatCurrency(avgTicket)} trend="+4.3%" />
+            <MiniStat label="Month to Date" value={formatCurrency(mtdRevenue)} />
+            <MiniStat label="Year to Date" value={formatCurrency(mtdRevenue * 3)} />
+            <MiniStat label="Avg. Ticket" value={formatCurrency(avgTicket)} />
           </div>
         </SectionPanel>
 
@@ -440,7 +441,7 @@ export function DashboardView() {
             </div>
           </div>
           <GaugeChart value={returningRate} />
-          <p className="text-[10px] text-emerald-400 font-medium text-center mt-1">+6% vs last week</p>
+          {clients.length > 0 && <p className="text-[10px] text-[#555] font-medium text-center mt-1">{returningCount} returning · {newClientsTotal} new</p>}
           <div className="grid grid-cols-2 gap-2 mt-4">
             <MiniStat label="Returning" value={String(returningCount)} />
             <MiniStat label="New Clients" value={String(newClientsTotal)} />
@@ -506,7 +507,7 @@ export function DashboardView() {
             <div className="bg-[#0e0e0e] rounded-lg p-3 border border-[#d4af37]/6 flex items-center gap-2.5">
               <Users className="w-4 h-4 text-[#d4af37]/60 flex-shrink-0" />
               <div>
-                <div className="text-sm font-bold text-[#e0e0e0]">3</div>
+                <div className="text-sm font-bold text-[#e0e0e0]">{todayWalkIns}</div>
                 <div className="text-[9px] text-[#555] uppercase tracking-wider">Walk-ins</div>
               </div>
             </div>
@@ -520,7 +521,7 @@ export function DashboardView() {
             <div className="bg-[#0e0e0e] rounded-lg p-3 border border-[#d4af37]/6 flex items-center gap-2.5">
               <Activity className="w-4 h-4 text-[#d4af37]/60 flex-shrink-0" />
               <div>
-                <div className="text-sm font-bold text-[#e0e0e0]">87%</div>
+                <div className="text-sm font-bold text-[#e0e0e0]">{staff.length > 0 ? `${Math.min(100, Math.round((todayTotalMins / 60 / staff.length) / 9 * 100))}%` : "0%"}</div>
                 <div className="text-[9px] text-[#555] uppercase tracking-wider">Utilization</div>
               </div>
             </div>
@@ -531,16 +532,29 @@ export function DashboardView() {
             <MiniStat label="Avg. Ticket" value={formatCurrency(avgTicket)} />
           </div>
           {/* Goal indicator */}
-          <div className="flex items-center justify-between bg-emerald-500/5 border border-emerald-500/10 rounded-lg px-3 py-2.5">
-            <div>
-              <div className="flex items-center gap-1.5">
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                <span className="text-[11px] font-semibold text-emerald-400">On Track</span>
+          {todayApptCount > 0 ? (
+            <div className="flex items-center justify-between bg-emerald-500/5 border border-emerald-500/10 rounded-lg px-3 py-2.5">
+              <div>
+                <div className="flex items-center gap-1.5">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                  <span className="text-[11px] font-semibold text-emerald-400">Active</span>
+                </div>
+                <span className="text-[9px] text-[#555] ml-5">{todayApptCount} booking{todayApptCount !== 1 ? "s" : ""} today</span>
               </div>
-              <span className="text-[9px] text-[#555] ml-5">Daily Goal</span>
+              <Target className="w-4 h-4 text-emerald-400/40" />
             </div>
-            <Target className="w-4 h-4 text-emerald-400/40" />
-          </div>
+          ) : (
+            <div className="flex items-center justify-between bg-white/3 border border-white/5 rounded-lg px-3 py-2.5">
+              <div>
+                <div className="flex items-center gap-1.5">
+                  <CalendarDays className="w-3.5 h-3.5 text-[#555]" />
+                  <span className="text-[11px] font-semibold text-[#555]">No bookings today</span>
+                </div>
+                <span className="text-[9px] text-[#444] ml-5">Add appointments to track progress</span>
+              </div>
+              <Target className="w-4 h-4 text-[#333]" />
+            </div>
+          )}
         </SectionPanel>
       </div>
     </div>

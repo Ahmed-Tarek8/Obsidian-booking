@@ -748,13 +748,7 @@ export function StaffPage() {
                 </div>
                 <div className="flex items-center justify-between mt-3">
                   <p className="text-[10px] text-[#666]">
-                    {selectedStaff.upcomingBookings} bookings &middot;{" "}
-                    {selectedStaff.upcomingBookings > 5
-                      ? "87"
-                      : selectedStaff.upcomingBookings > 3
-                        ? "72"
-                        : "45"}
-                    % booked
+                    {selectedStaff.upcomingBookings} booking{selectedStaff.upcomingBookings !== 1 ? "s" : ""}
                   </p>
                   <button className="text-[10px] text-[#d4af37] hover:text-[#ebd08f] transition-colors duration-200 cursor-pointer flex items-center gap-0.5">
                     View Full Schedule

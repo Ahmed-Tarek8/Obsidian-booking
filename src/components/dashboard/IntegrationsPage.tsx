@@ -156,7 +156,8 @@ export function IntegrationsPage() {
     const pendingSetups = integrations.filter(
       (i) => i.status === "Pending" || i.status === "Warning"
     ).length;
-    return { connectedApps, pendingSetups };
+    const totalIntegrations = integrations.length;
+    return { connectedApps, pendingSetups, totalIntegrations };
   }, [integrations]);
 
   // ── Filtered integrations ──────────────────────────────────────────
@@ -207,38 +208,30 @@ export function IntegrationsPage() {
         </div>
 
         {/* Stat Cards */}
-        <div className="grid grid-cols-4 gap-4 mb-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-5">
           <StatCard
             title="Connected Apps"
             value={String(stats.connectedApps)}
-            change={`${stats.connectedApps} connected`}
-            changeType="up"
+            change={`${stats.totalIntegrations} total integrations`}
+            changeType="neutral"
             icon={RefreshCw}
             delay={0}
           />
           <StatCard
             title="Pending Setups"
             value={String(stats.pendingSetups)}
-            change="Requires attention"
-            changeType="down"
+            change={stats.pendingSetups > 0 ? `${stats.pendingSetups} need attention` : "All clear"}
+            changeType="neutral"
             icon={Clock}
             delay={0.05}
           />
           <StatCard
-            title="Sync Health"
-            value="98%"
-            change="All systems operational"
-            changeType="up"
+            title="Total Integrations"
+            value={String(stats.totalIntegrations)}
+            change={stats.connectedApps > 0 ? `${stats.connectedApps} active` : "Add your first integration"}
+            changeType="neutral"
             icon={Activity}
             delay={0.1}
-          />
-          <StatCard
-            title="API Usage"
-            value="42%"
-            change="420K/1.0M calls"
-            changeType="neutral"
-            icon={Gauge}
-            delay={0.15}
           />
         </div>
 

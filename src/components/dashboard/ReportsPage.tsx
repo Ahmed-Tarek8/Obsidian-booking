@@ -107,7 +107,7 @@ export function ReportsPage() {
   const reports = useBookingStore((s) => s.reports);
   const staff = useBookingStore((s) => s.staff);
 
-  const [selectedReportId, setSelectedReportId] = useState<string | null>(reports[0]?.id ?? null);
+  const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<"grid" | "list">("list");
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("All Categories");
@@ -117,12 +117,13 @@ export function ReportsPage() {
   const stats = useMemo(() => {
     const total = reports.length;
     const scheduled = reports.filter((r) => r.status === "Scheduled").length;
-    const exportsThisMonth = reports.filter((r) => {
+    const completedThisMonth = reports.filter((r) => {
       if (r.status !== "Completed" || !r.lastGenerated) return false;
+      const now = new Date();
       const d = new Date(r.lastGenerated);
-      return d.getMonth() === 3; // April = month index 3
+      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
     }).length;
-    return { total, scheduled, exportsThisMonth };
+    return { total, scheduled, completedThisMonth };
   }, [reports]);
 
   // ── Filtered reports ────────────────────────────────────────────────────
@@ -143,7 +144,7 @@ export function ReportsPage() {
 
   const statuses: ReportStatus[] = ["Completed", "Scheduled", "Draft", "Failed"];
 
-  const selectedReport = reports.find((r) => r.id === selectedReportId) ?? reports[0];
+  const selectedReport = reports.find((r) => r.id === selectedReportId);
 
   return (
     <div className="space-y-5">
@@ -154,7 +155,7 @@ export function ReportsPage() {
       </div>
 
       {/* ── Stats Cards ───────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <StatCard
           title="Total Reports"
           value={String(stats.total)}
@@ -167,25 +168,17 @@ export function ReportsPage() {
           title="Scheduled Reports"
           value={String(stats.scheduled)}
           icon={Clock}
-          change="Requires attention"
+          change={stats.scheduled > 0 ? `${stats.scheduled} need attention` : "None scheduled"}
           changeType="neutral"
           delay={0.05}
         />
         <StatCard
-          title="Exports This Month"
-          value={String(stats.exportsThisMonth)}
+          title="Completed This Month"
+          value={String(stats.completedThisMonth)}
           icon={Download}
-          change="+55% last month"
-          changeType="up"
-          delay={0.1}
-        />
-        <StatCard
-          title="Storage Used"
-          value="68 GB"
-          icon={HardDrive}
-          change="42% of 160 GB"
+          change={reports.length > 0 ? `${reports.length} total reports` : "No reports yet"}
           changeType="neutral"
-          delay={0.15}
+          delay={0.1}
         />
       </div>
 

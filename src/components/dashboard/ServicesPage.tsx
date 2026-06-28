@@ -760,62 +760,23 @@ export function ServicesPage() {
                 <div className="mb-5">
                   <div className="flex items-center justify-between mb-3">
                     <h3 className="text-[10px] font-semibold tracking-widest text-[#666] uppercase">
-                      Pricing Tiers
+                      Pricing
                     </h3>
                   </div>
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between bg-[#0e0e0e] rounded-lg px-3 py-2.5">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm text-white font-medium">
-                          Standard
-                        </span>
-                      </div>
-                      <div className="text-right">
-                        <span className="text-sm text-white font-semibold">
-                          {formatCurrency(selectedService.price)}
-                        </span>
-                        <span className="text-[10px] text-[#666] ml-2">
-                          {selectedService.duration} min
-                        </span>
-                      </div>
+                  <div className="flex items-center justify-between bg-[#0e0e0e] rounded-lg px-3 py-2.5">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-white font-medium">
+                        Base Price
+                      </span>
                     </div>
-                    <div className="flex items-center justify-between bg-[#0e0e0e] rounded-lg px-3 py-2.5">
-                      <div className="flex items-center gap-2">
-                        <Star className="w-3.5 h-3.5 text-[#d4af37]" />
-                        <span className="text-sm text-white font-medium">
-                          Priority
-                        </span>
-                      </div>
-                      <div className="text-right">
-                        <span className="text-sm text-white font-semibold">
-                          {formatCurrency(
-                            Math.round(selectedService.price * 1.5)
-                          )}
-                        </span>
-                        <span className="text-[10px] text-[#666] ml-2">
-                          {selectedService.duration} min
-                        </span>
-                      </div>
+                    <div className="text-right">
+                      <span className="text-sm text-white font-semibold">
+                        {formatCurrency(selectedService.price)}
+                      </span>
+                      <span className="text-[10px] text-[#666] ml-2">
+                        {selectedService.duration} min
+                      </span>
                     </div>
-                    <div className="flex items-center justify-between bg-[#0e0e0e] rounded-lg px-3 py-2.5">
-                      <div className="flex items-center gap-2">
-                        <Crown className="w-3.5 h-3.5 text-[#d4af37]" />
-                        <span className="text-sm text-white font-medium">
-                          Executive
-                        </span>
-                      </div>
-                      <div className="text-right">
-                        <span className="text-sm text-white font-semibold">
-                          {formatCurrency(
-                            Math.round(selectedService.price * 2)
-                          )}
-                        </span>
-                        <span className="text-[10px] text-[#666] ml-2">
-                          {selectedService.duration} min
-                        </span>
-                      </div>
-                    </div>
-                    
                   </div>
                 </div>
 
