@@ -12,7 +12,6 @@ import {
   UserPlus,
   TrendingUp,
   Search,
-  Filter,
   LayoutGrid,
   List,
   ChevronRight,
@@ -555,11 +554,6 @@ export function ClientsPage() {
 
         {/* Action buttons */}
         <div className="flex items-center gap-2">
-          <PremiumButton variant="secondary" size="sm">
-            <Filter className="w-3.5 h-3.5" />
-            Filters
-          </PremiumButton>
-
           {/* View toggle */}
           <div className="flex items-center bg-[#1a1a1a] border border-[#d4af37]/10 rounded-lg p-0.5">
             <button

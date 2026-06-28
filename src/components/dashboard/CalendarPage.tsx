@@ -7,7 +7,6 @@ import {
   ChevronRight,
   ChevronDown,
   MoreHorizontal,
-  Filter,
   Diamond,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -344,10 +343,6 @@ export function CalendarPage({ onSelectBooking, selectedBookingId }: CalendarPag
                 </button>
               ))}
             </div>
-            <PremiumButton variant="secondary" size="sm">
-              <Filter className="w-3.5 h-3.5" />
-              Filters
-            </PremiumButton>
           </div>
         </div>
 

@@ -22,7 +22,6 @@ import {
   Crown,
   Plus,
   Users,
-  Filter,
 } from "lucide-react";
 
 // ── Category Color Mapping ─────────────────────────────────────────────
@@ -351,11 +350,6 @@ export function ServicesPage() {
             <option value="Limited">Limited</option>
             <option value="Inactive">Inactive</option>
           </select>
-
-          <PremiumButton variant="secondary" size="sm">
-            <Filter className="w-3.5 h-3.5" />
-            Filters
-          </PremiumButton>
 
           <div className="ml-auto flex items-center border border-[#d4af37]/10 rounded-lg overflow-hidden">
             <button
