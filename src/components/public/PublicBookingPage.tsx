@@ -212,8 +212,8 @@ export function PublicBookingPage({ onOpenDashboard }: { onOpenDashboard: () => 
                   )}
                 </div>
                 <p className="text-xs text-[#555] mb-8">
-                  A confirmation will be sent to <span className="text-[#888]">{clientEmail}</span>.
-                  You will be notified once your booking is confirmed.
+                  Your booking request has been received.
+                  Save your booking reference. The team will confirm your appointment shortly.
                 </p>
                 <div className="flex gap-3 justify-center">
                   <PremiumButton variant="secondary" onClick={handleReset}>Book Another</PremiumButton>

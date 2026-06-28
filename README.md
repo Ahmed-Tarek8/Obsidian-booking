@@ -1,57 +1,68 @@
 # Obsidian Booking
 
-A focused appointment booking and management interface for private advisory-style service businesses.
+A premium appointment booking frontend prototype built with Next.js, Tailwind CSS, Zustand, and Framer Motion.
+
+## Overview
+
+Obsidian Booking includes a public booking flow and an admin workspace for managing appointments, clients, services, and calendar scheduling.
 
 ## Features
 
-- Public booking flow with service selection, date/time picker, and booking reference generation
-- Admin dashboard with appointment management, client records, and service management
-- Business settings for profile, hours, booking rules, and notifications
-- Local browser persistence (localStorage) for demo persistence
+- Public booking page
+- Service selection
+- Date/time selection
+- Booking reference generation
+- Admin dashboard
+- Appointment list with filters
+- Client records
+- Service management
+- Weekly calendar view
+- Settings page
+- Local browser persistence
+- Premium black/gold interface
 
-## Demo Persistence
+## Demo Notes
 
-This version uses browser localStorage for demo persistence. It is suitable for prototype review and client-facing demos, but production delivery should connect a database, authentication, and email/SMS services.
+This is a portfolio frontend prototype. Data is stored locally in the browser using Zustand persistence/localStorage.
 
-## Production Requirements
-
-Before using this as a real business system, add:
-
-- Backend database (e.g., Supabase, PostgreSQL)
-- Authentication
-- Server-side validation
-- Email/SMS confirmations
-- Role-based access
-- Backup/export
-- Deployment environment configuration
+It does not include production authentication, database storage, email/SMS delivery, or payment processing.
 
 ## Tech Stack
 
-- **Framework**: Next.js 16 (React 19)
-- **Styling**: Tailwind CSS v4 + custom premium design system
-- **State**: Zustand with localStorage persistence
-- **Animations**: Framer Motion
-- **UI Components**: Radix UI primitives + custom premium components
-- **Icons**: Lucide React
-- **Type Safety**: TypeScript throughout
+- Next.js
+- React
+- TypeScript
+- Tailwind CSS
+- Zustand
+- Framer Motion
+- Lucide Icons
 
-## Getting Started
+## Run Locally
 
 ```bash
-# Install dependencies
 npm install
-
-# Run development server
 npm run dev
-
-# Build for production
-npm run build
-
-# Start production server
-npm start
 ```
 
-The app runs on `http://localhost:3000` by default.
+## Build
+
+```bash
+npm run build
+```
+
+## Production Upgrade Path
+
+To make this a real client system, add:
+
+- authentication
+- database
+- server-side validation
+- email/SMS confirmations
+- role-based access
+- backup/export
+- deployment environment configuration
+
+Do not claim it is a production SaaS.
 
 ## Demo Data
 
@@ -63,14 +74,6 @@ The app loads with seed data for immediate demo use:
 - 7 resources
 
 All appointment dates are generated dynamically relative to the current date, so the demo always feels current.
-
-## Known Limitations
-
-- **No backend authentication** — This is a demo/prototype. Do not use as-is for production without adding proper auth.
-- **LocalStorage persistence only** — Data is stored in the browser. Clearing browser data will reset all bookings and changes.
-- **No real payment processing** — Payment settings exist in the UI but no payment flow is implemented.
-- **No email/SMS notifications** — Notification toggles exist in settings but no actual delivery is wired.
-- **No team collaboration** — Single-user demo with no multi-user sync.
 
 ## License
 

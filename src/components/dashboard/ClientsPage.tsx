@@ -390,9 +390,10 @@ export function ClientsPage() {
   const stats = useMemo(() => {
     const total = clients.length;
     const vipCount = clients.filter((c) => c.tier === "VIP").length;
+    const now = new Date();
     const newThisMonth = clients.filter((c) => {
       const d = new Date(c.createdDate);
-      return d.getFullYear() === 2024 && d.getMonth() === 4; // May 2024
+      return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
     }).length;
     const avgLTV =
       total > 0
@@ -421,7 +422,7 @@ export function ClientsPage() {
         title: "New This Month",
         value: newThisMonth.toLocaleString(),
         icon: UserPlus,
-        change: "May 2024",
+        change: "This month",
         changeType: "neutral" as const,
         index: 2,
       },

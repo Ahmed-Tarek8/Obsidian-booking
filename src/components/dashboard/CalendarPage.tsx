@@ -5,16 +5,13 @@ import { motion } from "framer-motion";
 import {
   ChevronLeft,
   ChevronRight,
-  ChevronDown,
-  MoreHorizontal,
+  Calendar,
   Diamond,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PremiumButton } from "./PremiumButton";
 import { AppointmentDetailsPanel } from "./AppointmentDetailsPanel";
 import { useBookingStore, formatTime12 } from "@/lib/store";
-
-type ViewMode = "DAY" | "WEEK" | "MONTH";
 
 /* ── Types ──────────────────────────────────────────── */
 interface CalBlock {
@@ -136,7 +133,6 @@ interface CalendarPageProps {
 }
 
 export function CalendarPage({ onSelectBooking, selectedBookingId }: CalendarPageProps) {
-  const [viewMode, setViewMode] = useState<ViewMode>("WEEK");
 
   /* ── Store subscriptions ─────────────────────────── */
   const appointments = useBookingStore((s) => s.appointments);
@@ -312,10 +308,9 @@ export function CalendarPage({ onSelectBooking, selectedBookingId }: CalendarPag
             >
               <ChevronLeft className="w-4 h-4" />
             </PremiumButton>
-            <button className="flex items-center gap-2 text-sm font-semibold text-[#e0e0e0] tracking-wide cursor-pointer hover:text-[#d4af37] transition-colors">
+            <div className="text-sm font-semibold text-[#e0e0e0] tracking-wide">
               {headerDateRange}
-              <ChevronDown className="w-3.5 h-3.5 text-[#666]" />
-            </button>
+            </div>
             <PremiumButton
               variant="ghost"
               size="sm"
@@ -327,21 +322,8 @@ export function CalendarPage({ onSelectBooking, selectedBookingId }: CalendarPag
           </div>
 
           <div className="flex items-center gap-2">
-            <div className="flex items-center gap-0.5 bg-[#0e0e0e] rounded-lg p-0.5 border border-[#d4af37]/8">
-              {(["DAY", "WEEK", "MONTH"] as ViewMode[]).map((mode) => (
-                <button
-                  key={mode}
-                  onClick={() => setViewMode(mode)}
-                  className={cn(
-                    "px-3 py-1 text-[11px] font-semibold tracking-wider rounded-md transition-all duration-200 cursor-pointer",
-                    viewMode === mode
-                      ? "bg-gradient-to-b from-[#d4af37] via-[#c9a227] to-[#b8960b] text-[#0a0a0a] shadow-[0_1px_3px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.2)]"
-                      : "text-[#666] hover:text-[#999]"
-                  )}
-                >
-                  {mode}
-                </button>
-              ))}
+            <div className="rounded-lg border border-[#d4af37]/10 bg-[#0e0e0e] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-[#d4af37]">
+              Week View
             </div>
           </div>
         </div>
@@ -504,17 +486,21 @@ export function CalendarPage({ onSelectBooking, selectedBookingId }: CalendarPag
                               {b.staffLabel}
                             </div>
                           )}
-
-                          {/* Hover actions */}
-                          <div className="absolute top-1 right-1 opacity-0 group-hover/bk:opacity-100 transition-opacity">
-                            <MoreHorizontal className="w-3 h-3 text-[#888]" />
-                          </div>
                         </div>
                       </motion.button>
                     );
                   })}
                 </div>
               ))}
+
+              {/* Empty state */}
+              {appointments.length === 0 && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center z-10 pointer-events-none">
+                  <Calendar className="w-10 h-10 text-[#333] mb-3" />
+                  <p className="text-sm font-medium text-[#555]">No bookings scheduled</p>
+                  <p className="text-xs text-[#444] mt-1">Appointments will appear here once bookings are created.</p>
+                </div>
+              )}
             </div>
           </div>
         </div>

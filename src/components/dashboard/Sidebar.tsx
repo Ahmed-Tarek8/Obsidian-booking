@@ -141,8 +141,14 @@ export function Sidebar({ activeNav, onNavChange, collapsed, onToggleCollapse, o
         </ul>
       </nav>
 
-      {/* View booking page + collapse */}
+      {/* Bottom section */}
       <div className="p-3 border-t border-[#d4af37]/8 space-y-1.5">
+        {/* Portfolio demo badge */}
+        <div className="rounded-lg border border-[#d4af37]/15 bg-[#0e0e0e] px-2.5 py-1.5 text-center">
+          <div className="text-[9px] font-semibold uppercase tracking-wider text-[#d4af37]/60">Portfolio Demo</div>
+          <div className="text-[9px] text-[#555] mt-0.5">Local browser data</div>
+        </div>
+
         <button
           onClick={onOpenPublicPage}
           className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-[#d4af37]/70 hover:text-[#d4af37] hover:bg-[#161616] transition-all duration-200 cursor-pointer text-xs"
