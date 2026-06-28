@@ -22,6 +22,7 @@ import {
   Crown,
   Plus,
   Users,
+  Filter,
 } from "lucide-react";
 
 // ── Category Color Mapping ─────────────────────────────────────────────
