@@ -1,12 +1,28 @@
-/* Stabilize appointment filter controls so dropdowns do not shift the toolbar. */
+/* Appointments filter layout fix.
+   Do not use horizontal scrolling for the filter controls.
+   Filters live in a second row so dropdowns cannot cramp or shift the toolbar. */
 
-.appointment-filter-bar {
-  align-items: center;
-  flex-wrap: nowrap;
-  overflow-x: auto;
-  overflow-y: visible;
+.appointment-filter-zone {
   position: relative;
-  z-index: 50;
+  z-index: 80;
+  overflow: visible;
+}
+
+.appointment-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  overflow: visible;
+}
+
+.appointment-filter-tray {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  overflow: visible;
+  padding-top: 10px;
 }
 
 .appointment-filter-control {
@@ -16,7 +32,7 @@
   align-items: center;
   position: relative;
   overflow: visible;
-  z-index: 70;
+  z-index: 90;
 }
 
 .appointment-filter-control > button {
@@ -29,7 +45,7 @@
   position: absolute;
   top: calc(100% + 8px);
   left: 0;
-  z-index: 200;
+  z-index: 300;
   max-height: 240px;
   overflow-y: auto;
 }

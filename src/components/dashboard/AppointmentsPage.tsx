@@ -624,30 +624,45 @@ export function AppointmentsPage() {
       </div>
 
       {/* Filters row */}
-      <div className="appointment-filter-bar flex items-center gap-3">
-        {/* Date display */}
-        <div
-          className="premium-btn flex h-10 flex-none items-center gap-2 rounded-lg px-3.5 text-[13px] font-medium text-[#666]
-          bg-gradient-to-b from-[#1e1e1e] to-[#161616] border border-[#d4af37]/6
-          shadow-[0_1px_2px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.03)]"
-        >
-          <Calendar className="w-3.5 h-3.5 text-[#d4af37]/40" />
-          <span className="whitespace-nowrap">{dateRangeText}</span>
+      <div className="appointment-filter-zone">
+        {/* Main toolbar row */}
+        <div className="appointment-toolbar">
+          {/* Date display */}
+          <div
+            className="premium-btn flex h-10 flex-none items-center gap-2 rounded-lg px-3.5 text-[13px] font-medium text-[#666]
+            bg-gradient-to-b from-[#1e1e1e] to-[#161616] border border-[#d4af37]/6
+            shadow-[0_1px_2px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.03)]"
+          >
+            <Calendar className="w-3.5 h-3.5 text-[#d4af37]/40" />
+            <span className="whitespace-nowrap">{dateRangeText}</span>
+          </div>
+
+          {/* Working Filters toggle */}
+          <PremiumButton
+            variant={showFilters ? "primary" : "secondary"}
+            size="sm"
+            className="flex-none"
+            onClick={() => setShowFilters((v) => !v)}
+          >
+            <Filter className="w-3.5 h-3.5" />
+            Filters
+          </PremiumButton>
+
+          {/* New Booking button */}
+          <PremiumButton
+            variant="primary"
+            size="sm"
+            className="flex-none"
+            onClick={() => setShowNewBooking(true)}
+          >
+            <Plus className="w-3.5 h-3.5" />
+            New Booking
+          </PremiumButton>
         </div>
 
-        {/* Working Filters toggle */}
-        <PremiumButton
-          variant={showFilters ? "primary" : "secondary"}
-          size="sm"
-          className="flex-none"
-          onClick={() => setShowFilters((v) => !v)}
-        >
-          <Filter className="w-3.5 h-3.5" />
-          Filters
-        </PremiumButton>
-
+        {/* Filter tray row */}
         {showFilters && (
-          <>
+          <div className="appointment-filter-tray">
             <FilterDropdown
               label="All Staff"
               icon={User}
@@ -683,19 +698,8 @@ export function AppointmentsPage() {
                 Reset
               </PremiumButton>
             )}
-          </>
+          </div>
         )}
-
-        {/* New Booking button */}
-        <PremiumButton
-          variant="primary"
-          size="sm"
-          className="flex-none"
-          onClick={() => setShowNewBooking(true)}
-        >
-          <Plus className="w-3.5 h-3.5" />
-          New Booking
-        </PremiumButton>
       </div>
 
       {/* Summary cards */}
